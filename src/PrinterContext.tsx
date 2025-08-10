@@ -34,6 +34,8 @@ interface PrinterContextType {
   scanForDevices: () => Promise<void>;
   connectToDevice: (device: BluetoothDevice) => Promise<void>;
   disconnectDevice: () => Promise<void>;
+  getConnectionStatus: () => Promise<any>;
+  refreshConnectionStatus: () => Promise<void>;
   printHelloWorld: () => Promise<void>;
   printCustomLabel: (
     text: string,
@@ -71,16 +73,39 @@ export const PrinterProvider: React.FC<PrinterProviderProps> = ({children}) => {
   // Check Bluetooth status
   const checkBluetoothStatus = async () => {
     try {
+      console.log('Checking Bluetooth status...');
       const {PrintBridge} = NativeModules;
+      if (!PrintBridge) {
+        throw new Error('PrintBridge native module not found');
+      }
+      
       const enabled = await PrintBridge.isBluetoothEnabled();
+      console.log('Bluetooth enabled:', enabled);
       setIsBluetoothEnabled(enabled);
 
       if (enabled) {
         await listPairedDevices();
+        // Also check current connection status
+        await refreshConnectionStatus();
       }
     } catch (error) {
       console.error('Error checking Bluetooth status:', error);
       setIsBluetoothEnabled(false);
+    }
+  };
+
+  // Refresh connection status
+  const refreshConnectionStatus = async () => {
+    try {
+      const status = await getConnectionStatus();
+      if (status && !status.connected) {
+        // If native module says we're not connected, reset our state
+        setConnectedDevice(null);
+      }
+    } catch (error) {
+      console.error('Error refreshing connection status:', error);
+      // On error, assume disconnected
+      setConnectedDevice(null);
     }
   };
 
@@ -131,11 +156,41 @@ export const PrinterProvider: React.FC<PrinterProviderProps> = ({children}) => {
   const connectToDevice = async (device: BluetoothDevice) => {
     try {
       setIsConnecting(true);
+      console.log('Attempting to connect to device:', device.address);
+      
       const {PrintBridge} = NativeModules;
-      await PrintBridge.connectDual(device.address);
-      setConnectedDevice(device);
+      if (!PrintBridge) {
+        throw new Error('PrintBridge native module not found');
+      }
+      
+      // Try to connect with retry logic
+      let lastError;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          console.log(`Connection attempt ${attempt}/3`);
+          await PrintBridge.connectDual(device.address);
+          console.log('Successfully connected to device:', device.address);
+          setConnectedDevice(device);
+          return; // Success, exit the function
+        } catch (error) {
+          console.error(`Connection attempt ${attempt} failed:`, error);
+          lastError = error;
+          
+          // Wait before retry (except on last attempt)
+          if (attempt < 3) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        }
+      }
+      
+      // All attempts failed
+      console.error('All connection attempts failed');
+      setConnectedDevice(null);
+      throw lastError || new Error('Failed to connect after 3 attempts');
     } catch (error) {
       console.error('Error connecting to device:', error);
+      // Reset connection state on failure
+      setConnectedDevice(null);
       throw error;
     } finally {
       setIsConnecting(false);
@@ -145,11 +200,36 @@ export const PrinterProvider: React.FC<PrinterProviderProps> = ({children}) => {
   // Disconnect device
   const disconnectDevice = async () => {
     try {
+      console.log('Attempting to disconnect device');
       const {PrintBridge} = NativeModules;
+      if (!PrintBridge) {
+        throw new Error('PrintBridge native module not found');
+      }
+      
       await PrintBridge.disconnect();
+      console.log('Successfully disconnected device');
       setConnectedDevice(null);
     } catch (error) {
       console.error('Error disconnecting device:', error);
+      // Force reset connection state even if disconnect fails
+      setConnectedDevice(null);
+    }
+  };
+
+  // Get connection status
+  const getConnectionStatus = async () => {
+    try {
+      const {PrintBridge} = NativeModules;
+      if (!PrintBridge) {
+        throw new Error('PrintBridge native module not found');
+      }
+      
+      const status = await PrintBridge.getConnectionStatus();
+      console.log('Connection status:', status);
+      return status;
+    } catch (error) {
+      console.error('Error getting connection status:', error);
+      return null;
     }
   };
 
@@ -328,6 +408,8 @@ export const PrinterProvider: React.FC<PrinterProviderProps> = ({children}) => {
     scanForDevices,
     connectToDevice,
     disconnectDevice,
+    getConnectionStatus,
+    refreshConnectionStatus,
     printHelloWorld,
     printCustomLabel,
     printTestLabel,

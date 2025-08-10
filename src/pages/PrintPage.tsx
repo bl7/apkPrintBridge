@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   SafeAreaView,
   ScrollView,
@@ -21,10 +21,16 @@ const PrintPage: React.FC = () => {
     printCustomLabel,
     printTestLabel,
     printESCTest,
+    refreshConnectionStatus,
   } = usePrinter();
   const [customText, setCustomText] = useState('Sample Label');
   const [customBarcode, setCustomBarcode] = useState('123456789');
   const [customQRCode, setCustomQRCode] = useState('https://example.com');
+
+  // Refresh connection status when page loads
+  useEffect(() => {
+    refreshConnectionStatus();
+  }, []);
 
   const handlePrintHelloWorld = async () => {
     if (!connectedDevice) {
@@ -199,6 +205,14 @@ const PrintPage: React.FC = () => {
                 {connectedDevice ? 'Connected' : 'Not Connected'}
               </Text>
             </View>
+
+            {/* Refresh Button */}
+            <TouchableOpacity
+              style={[styles.button, styles.refreshButton]}
+              onPress={refreshConnectionStatus}>
+              <MaterialIcons name="refresh" size={20} color="white" />
+              <Text style={styles.buttonText}>Refresh</Text>
+            </TouchableOpacity>
           </View>
 
           {connectedDevice && (
@@ -558,6 +572,22 @@ const styles = StyleSheet.create({
   pngButton: {
     backgroundColor: '#E91E63',
     marginTop: 10,
+  },
+  refreshButton: {
+    backgroundColor: '#2196F3',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+  },
+  button: {
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    marginBottom: 15,
   },
 });
 

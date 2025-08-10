@@ -28,6 +28,7 @@ const PrinterConnectionPage: React.FC = () => {
     scanForDevices,
     connectToDevice,
     disconnectDevice,
+    getConnectionStatus,
   } = usePrinter();
 
   // Initialize Bluetooth on component mount
@@ -92,6 +93,23 @@ const PrinterConnectionPage: React.FC = () => {
     } catch (error) {
       console.error('Error disconnecting device:', error);
       Alert.alert('Error', 'Failed to disconnect device');
+    }
+  };
+
+  const handleDebugConnection = async () => {
+    try {
+      const status = await getConnectionStatus();
+      if (status) {
+        Alert.alert(
+          'Connection Debug Info',
+          `Type: ${status.type}\nConnected: ${status.connected}\nClassic: ${status.classicConnected}\nBLE: ${status.bleConnected}`,
+        );
+      } else {
+        Alert.alert('Debug Info', 'Failed to get connection status');
+      }
+    } catch (error) {
+      console.error('Error getting debug info:', error);
+      Alert.alert('Error', 'Failed to get debug info');
     }
   };
 
@@ -255,6 +273,14 @@ const PrinterConnectionPage: React.FC = () => {
               </Text>
             </View>
           </View>
+          
+          {/* Debug Button */}
+          <TouchableOpacity
+            style={[styles.button, styles.debugButton]}
+            onPress={handleDebugConnection}>
+            <MaterialIcons name="bug-report" size={20} color="white" />
+            <Text style={styles.buttonText}>Debug Connection</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -393,6 +419,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#F44336',
     paddingHorizontal: 15,
     paddingVertical: 8,
+  },
+  debugButton: {
+    backgroundColor: '#9C27B0',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    marginTop: 15,
+    alignSelf: 'center',
   },
   connectedDeviceInfo: {
     backgroundColor: '#E8F5E8',

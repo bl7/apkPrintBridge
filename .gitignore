@@ -81,6 +81,7 @@ android/.gradle/
 .env.development.local
 .env.test.local
 .env.production.local
+src/config/env.ts
 
 # Logs
 *.log

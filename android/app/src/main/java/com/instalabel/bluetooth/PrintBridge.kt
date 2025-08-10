@@ -146,7 +146,76 @@ class PrintBridge(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
     }
 
     @ReactMethod
+    fun getPairedDevices(promise: Promise) {
+        val adapter = bluetoothAdapter
+        if (adapter == null) {
+            promise.reject("BLUETOOTH_ERROR", "Bluetooth not supported")
+            return
+        }
+
+        try {
+            val deviceList = Arguments.createArray()
+            
+            // Get paired devices
+            val pairedDevices = adapter.bondedDevices
+            pairedDevices.forEach { device ->
+                val deviceMap = Arguments.createMap().apply {
+                    putString("id", device.address)
+                    putString("name", device.name ?: "Unknown Device")
+                    putString("address", device.address)
+                    putBoolean("paired", true)
+                    putString("technology", getDeviceTechnology(device).name)
+                }
+                deviceList.pushMap(deviceMap)
+            }
+
+            promise.resolve(deviceList)
+        } catch (e: Exception) {
+            promise.reject("SCAN_ERROR", "Failed to get paired devices", e)
+        }
+    }
+
+    @ReactMethod
     fun connectToDevice(deviceAddress: String, promise: Promise) {
+        try {
+            Log.d(TAG, "Attempting to connect to device: $deviceAddress")
+            val device = bluetoothAdapter?.getRemoteDevice(deviceAddress)
+            if (device == null) {
+                Log.e(TAG, "Device not found: $deviceAddress")
+                promise.reject("CONNECTION_ERROR", "Device not found")
+                return
+            }
+
+            val technology = getDeviceTechnology(device)
+            Log.d(TAG, "Device technology detected: $technology")
+            currentConnectionType = technology
+
+            when (technology) {
+                ConnectionType.CLASSIC -> {
+                    Log.d(TAG, "Connecting via Classic Bluetooth")
+                    connectClassic(device, promise)
+                }
+                ConnectionType.BLE -> {
+                    Log.d(TAG, "Connecting via BLE")
+                    connectBLE(device, promise)
+                }
+                ConnectionType.DUAL -> {
+                    Log.d(TAG, "Connecting via Dual mode")
+                    connectDual(device, promise)
+                }
+                ConnectionType.UNKNOWN -> {
+                    Log.e(TAG, "Unknown device type")
+                    promise.reject("CONNECTION_ERROR", "Unknown device type")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error connecting to device: $deviceAddress", e)
+            promise.reject("CONNECTION_ERROR", "Failed to connect to device", e)
+        }
+    }
+
+    @ReactMethod
+    fun connectDual(deviceAddress: String, promise: Promise) {
         try {
             val device = bluetoothAdapter?.getRemoteDevice(deviceAddress)
             if (device == null) {
@@ -160,7 +229,15 @@ class PrintBridge(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
             when (technology) {
                 ConnectionType.CLASSIC -> connectClassic(device, promise)
                 ConnectionType.BLE -> connectBLE(device, promise)
-                ConnectionType.DUAL -> connectDual(device, promise)
+                ConnectionType.DUAL -> {
+                    // For dual devices, try BLE first, then fallback to classic
+                    try {
+                        connectBLE(device, promise)
+                    } catch (e: Exception) {
+                        // Fallback to classic if BLE fails
+                        connectClassic(device, promise)
+                    }
+                }
                 ConnectionType.UNKNOWN -> promise.reject("CONNECTION_ERROR", "Unknown device type")
             }
         } catch (e: Exception) {
@@ -290,14 +367,18 @@ class PrintBridge(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
     private fun connectClassic(device: BluetoothDevice, promise: Promise) {
         Thread {
             try {
+                Log.d(TAG, "Creating classic Bluetooth socket for device: ${device.address}")
                 val socket = device.createRfcommSocketToServiceRecord(SPP_UUID)
+                Log.d(TAG, "Attempting to connect classic socket...")
                 socket.connect()
+                Log.d(TAG, "Classic Bluetooth connected successfully")
                 
                 classicSocket = socket
                 classicOutputStream = socket.outputStream
                 
                 promise.resolve(true)
             } catch (e: Exception) {
+                Log.e(TAG, "Failed to connect via classic Bluetooth", e)
                 promise.reject("CLASSIC_CONNECTION_ERROR", "Failed to connect via classic Bluetooth", e)
             }
         }.start()

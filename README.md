@@ -1,79 +1,126 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# InstaLabel - Bluetooth Label Printer App
 
-# Getting Started
+A React Native application that connects to label printers and receipt printers via Bluetooth to print labels and receipts.
 
->**Note**: Make sure you have completed the [React Native - Environment Setup](https://reactnative.dev/docs/environment-setup) instructions till "Creating a new application" step, before proceeding.
+## Features
 
-## Step 1: Start the Metro Server
+- **Bluetooth Connectivity**: Connect to classic Bluetooth printers
+- **Device Management**: Scan, pair, and manage Bluetooth devices
+- **Custom Printing**: Print custom text labels
+- **Print Templates**: Pre-configured templates for common use cases
+- **Modern UI**: Clean, intuitive interface with Material Design
 
-First, you will need to start **Metro**, the JavaScript _bundler_ that ships _with_ React Native.
+## Prerequisites
 
-To start Metro, run the following command from the _root_ of your React Native project:
+- Android device with Bluetooth capability
+- Label printer or receipt printer with Bluetooth support
+- Android 5.0+ (API level 21+)
+
+## Installation
+
+### For End Users
+
+1. Download the APK file from the releases
+2. Install the APK on your Android device
+3. Grant necessary permissions when prompted
+4. Open the app and start printing!
+
+### For Developers
+
+1. Clone the repository
+2. Install dependencies: `npm install`
+3. Run on Android: `npx react-native run-android`
+
+## Usage
+
+### 1. Enable Bluetooth
+- Open the app
+- Tap "Enable Bluetooth" if Bluetooth is not enabled
+- Grant location permission (required for Bluetooth scanning)
+
+### 2. Connect to Printer
+- Tap "Scan" to discover nearby Bluetooth devices
+- Select your printer from the list
+- The app will automatically pair and connect
+
+### 3. Print Labels
+- **Custom Text**: Enter your text and tap "Print Text"
+- **Templates**: Use pre-configured templates for common formats
+- **Receipts**: Print formatted receipts with the receipt template
+
+## Bluetooth Permissions
+
+The app requires the following permissions:
+- `BLUETOOTH` - Basic Bluetooth functionality
+- `BLUETOOTH_ADMIN` - Bluetooth device management
+- `BLUETOOTH_CONNECT` - Connect to Bluetooth devices
+- `BLUETOOTH_SCAN` - Scan for Bluetooth devices
+- `ACCESS_FINE_LOCATION` - Required for Bluetooth scanning on Android
+
+## Supported Printers
+
+This app works with most Bluetooth-enabled:
+- Label printers (Zebra, Brother, etc.)
+- Receipt printers (Epson, Star, etc.)
+- Thermal printers
+- Any printer that accepts plain text via Bluetooth
+
+## Troubleshooting
+
+### Can't Find Printer
+- Ensure the printer is in pairing mode
+- Check that Bluetooth is enabled on both devices
+- Try scanning multiple times
+- Verify the printer supports classic Bluetooth (not BLE)
+
+### Connection Issues
+- Make sure the printer is within range
+- Check that the printer is not connected to another device
+- Restart Bluetooth on both devices
+- Verify printer compatibility
+
+### Print Quality Issues
+- Check printer settings (dpi, darkness, etc.)
+- Ensure proper label/receipt paper is loaded
+- Clean printer head if necessary
+
+## Building APK
+
+To build a release APK:
 
 ```bash
-# using npm
-npm start
-
-# OR using Yarn
-yarn start
+cd android
+./gradlew assembleRelease
 ```
 
-## Step 2: Start your Application
+The APK will be generated at:
+`android/app/build/outputs/apk/release/app-release.apk`
 
-Let Metro Bundler run in its _own_ terminal. Open a _new_ terminal from the _root_ of your React Native project. Run the following command to start your _Android_ or _iOS_ app:
+## Development
 
-### For Android
+### Dependencies
+- `react-native-bluetooth-escpos-printer` - ESC/POS printer support
+- `react-native-bluetooth-serial` - Bluetooth serial communication
+- `react-native-bluetooth-classic` - Classic Bluetooth support
+- `@expo/vector-icons` - Icon library
 
-```bash
-# using npm
-npm run android
-
-# OR using Yarn
-yarn android
+### Project Structure
+```
+src/
+├── App.tsx              # Main application component
+├── components/          # Reusable UI components
+├── services/           # Bluetooth and printing services
+└── utils/              # Utility functions
 ```
 
-### For iOS
+## License
 
-```bash
-# using npm
-npm run ios
+This project is licensed under the MIT License.
 
-# OR using Yarn
-yarn ios
-```
+## Support
 
-If everything is set up _correctly_, you should see your new app running in your _Android Emulator_ or _iOS Simulator_ shortly provided you have set up your emulator/simulator correctly.
+For issues and feature requests, please create an issue in the repository.
 
-This is one way to run your app — you can also run it directly from within Android Studio and Xcode respectively.
+## Contributing
 
-## Step 3: Modifying your App
-
-Now that you have successfully run the app, let's modify it.
-
-1. Open `App.tsx` in your text editor of choice and edit some lines.
-2. For **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Developer Menu** (<kbd>Ctrl</kbd> + <kbd>M</kbd> (on Window and Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (on macOS)) to see your changes!
-
-   For **iOS**: Hit <kbd>Cmd ⌘</kbd> + <kbd>R</kbd> in your iOS Simulator to reload the app and see your changes!
-
-## Congratulations! :tada:
-
-You've successfully run and modified your React Native App. :partying_face:
-
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [Introduction to React Native](https://reactnative.dev/docs/getting-started).
-
-# Troubleshooting
-
-If you can't get this to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+Contributions are welcome! Please feel free to submit a Pull Request.

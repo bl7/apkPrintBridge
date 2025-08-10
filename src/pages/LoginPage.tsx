@@ -6,19 +6,13 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  KeyboardAvoidingView,
   Platform,
   Alert,
-  ActivityIndicator,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {useAuth} from '../contexts/AuthContext';
 
-interface LoginPageProps {
-  onLoginSuccess: () => void;
-}
-
-const LoginPage: React.FC<LoginPageProps> = ({onLoginSuccess}) => {
+const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -64,9 +58,6 @@ const LoginPage: React.FC<LoginPageProps> = ({onLoginSuccess}) => {
         email: email.trim(),
         password: password,
       });
-
-      // Login successful, call the success callback
-      onLoginSuccess();
     } catch (error) {
       console.error('Login error:', error);
       Alert.alert(
@@ -78,127 +69,96 @@ const LoginPage: React.FC<LoginPageProps> = ({onLoginSuccess}) => {
     }
   };
 
-  const handleDemoLogin = () => {
-    setEmail('demo@example.com');
-    setPassword('password123');
-  };
-
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}>
-        <View style={styles.content}>
-          {/* Logo/Header */}
-          <View style={styles.header}>
-            <View style={styles.logoContainer}>
-              <MaterialIcons name="print" size={60} color="#8A2BE2" />
-              <View style={styles.labelIcon}>
-                <MaterialIcons name="label" size={20} color="#8A2BE2" />
-              </View>
+      <View style={styles.content}>
+        {/* Logo/Header */}
+        <View style={styles.header}>
+          <View style={styles.logoContainer}>
+            <MaterialIcons name="print" size={60} color="#8A2BE2" />
+            <View style={styles.labelIcon}>
+              <MaterialIcons name="label" size={20} color="#8A2BE2" />
             </View>
-            <Text style={styles.appTitle}>InstaLabel</Text>
-            <Text style={styles.appSubtitle}>Smart Kitchen Labeling</Text>
           </View>
-
-          {/* Login Form */}
-          <View style={styles.formContainer}>
-            <Text style={styles.greeting}>Good evening, Welcome Back</Text>
-            <Text style={styles.formSubtitle}>
-              Please login to your account to continue
-            </Text>
-            <Text style={styles.formTitle}>Sign in to your account</Text>
-
-            {/* Email Input */}
-            <View style={styles.inputContainer}>
-              <MaterialIcons
-                name="email"
-                size={20}
-                color="#8A2BE2"
-                style={styles.inputIcon}
-              />
-              <TextInput
-                style={styles.textInput}
-                placeholder="your.email@company.com"
-                placeholderTextColor="#999"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                editable={!isLoading}
-              />
-            </View>
-
-            {/* Password Input */}
-            <View style={styles.inputContainer}>
-              <MaterialIcons
-                name="lock"
-                size={20}
-                color="#8A2BE2"
-                style={styles.inputIcon}
-              />
-              <TextInput
-                style={styles.textInput}
-                placeholder="Enter your password"
-                placeholderTextColor="#999"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-                autoCorrect={false}
-                editable={!isLoading}
-              />
-              <TouchableOpacity
-                style={styles.passwordToggle}
-                onPress={() => setShowPassword(!showPassword)}>
-                <MaterialIcons
-                  name={showPassword ? 'visibility' : 'visibility-off'}
-                  size={20}
-                  color="#8A2BE2"
-                />
-              </TouchableOpacity>
-            </View>
-
-            {/* Login Button */}
-            <TouchableOpacity
-              style={[styles.loginButton, isLoading && styles.disabledButton]}
-              onPress={handleLogin}
-              disabled={isLoading}>
-              {isLoading ? (
-                <ActivityIndicator color="white" size="small" />
-              ) : (
-                <MaterialIcons name="login" size={20} color="white" />
-              )}
-              <Text style={styles.loginButtonText}>
-                {isLoading ? 'Signing In...' : 'Sign In'}
-              </Text>
-            </TouchableOpacity>
-
-            {/* Demo Login Button */}
-            <TouchableOpacity
-              style={styles.demoButton}
-              onPress={handleDemoLogin}
-              disabled={isLoading}>
-              <Text style={styles.demoButtonText}>Use Demo Credentials</Text>
-            </TouchableOpacity>
-
-            {/* Footer */}
-            <View style={styles.footer}>
-              <Text style={styles.footerText}>
-                Don't have an account?{' '}
-                <Text style={styles.footerLink}>Visit our website</Text>
-              </Text>
-            </View>
-
-            {/* Copyright */}
-            <Text style={styles.copyright}>
-              Copyright © 2023 - current. InstaLabel Pvt. Ltd. All rights
-              reserved.
-            </Text>
-          </View>
+          <Text style={styles.appTitle}>InstaLabel</Text>
+          <Text style={styles.appSubtitle}>Smart Kitchen Labeling</Text>
         </View>
-      </KeyboardAvoidingView>
+
+        {/* Login Form */}
+        <View style={styles.formContainer}>
+          <Text style={styles.greeting}>Good evening, Welcome Back</Text>
+          <Text style={styles.formSubtitle}>
+            Please login to your account to continue
+          </Text>
+          <Text style={styles.formTitle}>Sign in to your account</Text>
+
+          {/* Email Input */}
+          <View style={styles.inputContainer}>
+            <MaterialIcons name="email" size={20} color="#8A2BE2" />
+            <TextInput
+              style={styles.textInput}
+              placeholder="your.email@company.com"
+              placeholderTextColor="#999"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              editable={!isLoading}
+            />
+          </View>
+
+          {/* Password Input */}
+          <View style={styles.inputContainer}>
+            <MaterialIcons name="lock" size={20} color="#8A2BE2" />
+            <TextInput
+              style={styles.textInput}
+              placeholder="Enter your password"
+              placeholderTextColor="#999"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+              autoCapitalize="none"
+              autoCorrect={false}
+              editable={!isLoading}
+            />
+            <TouchableOpacity
+              style={styles.passwordToggle}
+              onPress={() => setShowPassword(!showPassword)}>
+              <MaterialIcons
+                name={showPassword ? 'visibility' : 'visibility-off'}
+                size={20}
+                color="#8A2BE2"
+              />
+            </TouchableOpacity>
+          </View>
+
+          {/* Login Button */}
+          <TouchableOpacity
+            style={[styles.loginButton, isLoading && styles.disabledButton]}
+            onPress={handleLogin}
+            disabled={isLoading}>
+            <MaterialIcons name="login" size={20} color="white" />
+            <Text style={styles.loginButtonText}>
+              {isLoading ? 'Signing In...' : 'Sign In'}
+            </Text>
+          </TouchableOpacity>
+
+          {/* Footer */}
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>
+              Don't have an account?{' '}
+              <Text style={styles.footerLink}>Visit our website</Text>
+            </Text>
+          </View>
+
+          {/* Copyright */}
+          <Text style={styles.copyright}>
+            Copyright © 2023 - current. InstaLabel Pvt. Ltd. All rights
+            reserved.
+          </Text>
+        </View>
+      </View>
     </SafeAreaView>
   );
 };
@@ -208,9 +168,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#8A2BE2',
   },
-  keyboardView: {
-    flex: 1,
-  },
+
   content: {
     flex: 1,
     padding: 20,
@@ -287,10 +245,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  inputIcon: {
-    marginLeft: 15,
-    marginRight: 10,
-  },
+
   textInput: {
     flex: 1,
     paddingVertical: 18,
@@ -336,18 +291,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0,
     elevation: 0,
   },
-  demoButton: {
-    backgroundColor: '#4CAF50',
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginBottom: 25,
-  },
-  demoButtonText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '500',
-  },
+
   footer: {
     alignItems: 'center',
     marginBottom: 20,

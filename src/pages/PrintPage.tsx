@@ -589,6 +589,11 @@ const styles = StyleSheet.create({
     gap: 10,
     marginBottom: 15,
   },
+  buttonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
 });
 
 export default PrintPage;

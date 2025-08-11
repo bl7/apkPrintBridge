@@ -1,5 +1,6 @@
 import React, {createContext, useContext, useState, ReactNode} from 'react';
 import {NativeModules} from 'react-native';
+import {generate56x31Label, generateComplexLabel} from '../tsplUtils';
 
 // Types
 interface BluetoothDevice {
@@ -42,6 +43,13 @@ interface PrinterContextType {
     barcode?: string,
     qrCode?: string,
   ) => Promise<void>;
+  printComplexLabel: (labelData: {
+    header: string;
+    expiryLine?: string;
+    printedLine?: string;
+    ingredientsLine?: string;
+    initialsLine?: string;
+  }) => Promise<void>;
   printTestLabel: () => Promise<void>;
   printESCTest: () => Promise<void>;
 }
@@ -78,7 +86,7 @@ export const PrinterProvider: React.FC<PrinterProviderProps> = ({children}) => {
       if (!PrintBridge) {
         throw new Error('PrintBridge native module not found');
       }
-      
+
       const enabled = await PrintBridge.isBluetoothEnabled();
       console.log('Bluetooth enabled:', enabled);
       setIsBluetoothEnabled(enabled);
@@ -157,12 +165,12 @@ export const PrinterProvider: React.FC<PrinterProviderProps> = ({children}) => {
     try {
       setIsConnecting(true);
       console.log('Attempting to connect to device:', device.address);
-      
+
       const {PrintBridge} = NativeModules;
       if (!PrintBridge) {
         throw new Error('PrintBridge native module not found');
       }
-      
+
       // Try to connect with retry logic
       let lastError;
       for (let attempt = 1; attempt <= 3; attempt++) {
@@ -175,14 +183,14 @@ export const PrinterProvider: React.FC<PrinterProviderProps> = ({children}) => {
         } catch (error) {
           console.error(`Connection attempt ${attempt} failed:`, error);
           lastError = error;
-          
+
           // Wait before retry (except on last attempt)
           if (attempt < 3) {
             await new Promise(resolve => setTimeout(resolve, 1000));
           }
         }
       }
-      
+
       // All attempts failed
       console.error('All connection attempts failed');
       setConnectedDevice(null);
@@ -205,7 +213,7 @@ export const PrinterProvider: React.FC<PrinterProviderProps> = ({children}) => {
       if (!PrintBridge) {
         throw new Error('PrintBridge native module not found');
       }
-      
+
       await PrintBridge.disconnect();
       console.log('Successfully disconnected device');
       setConnectedDevice(null);
@@ -223,7 +231,7 @@ export const PrinterProvider: React.FC<PrinterProviderProps> = ({children}) => {
       if (!PrintBridge) {
         throw new Error('PrintBridge native module not found');
       }
-      
+
       const status = await PrintBridge.getConnectionStatus();
       console.log('Connection status:', status);
       return status;
@@ -242,16 +250,8 @@ export const PrinterProvider: React.FC<PrinterProviderProps> = ({children}) => {
     try {
       setIsPrinting(true);
 
-      // Try a more explicit TSPL command format
-      const tsplCommands = [
-        'SIZE 56 mm,31 mm', // Explicitly specify units
-        'GAP 2 mm,0 mm', // Explicitly specify units
-        'DIRECTION 0', // Set print direction
-        'DENSITY 8', // Set print density
-        'CLS', // Clear buffer
-        'TEXT 50,50,"3",0,1,1,"Hello World"', // More centered position
-        'PRINT 1', // Print 1 label
-      ].join('\n');
+      // Generate TSPL commands using utility function
+      const tsplCommands = generate56x31Label('Hello World');
 
       console.log('Sending TSPL commands:', tsplCommands);
       const {PrintBridge} = NativeModules;
@@ -277,46 +277,41 @@ export const PrinterProvider: React.FC<PrinterProviderProps> = ({children}) => {
     try {
       setIsPrinting(true);
 
-      // Calculate positions for 56x31mm label (56mm width, 31mm height)
-      // Using 203 DPI: 56mm = ~447 dots, 31mm = ~248 dots
-      const labelWidth = 447;
-      const labelHeight = 248;
-      const centerX = labelWidth / 2;
-
-      let tsplCommands = [
-        'SIZE 56 mm,31 mm', // Explicitly specify units
-        'GAP 2 mm,0 mm', // Explicitly specify units
-        'DIRECTION 0', // Set print direction
-        'DENSITY 8', // Set print density
-        'CLS', // Clear buffer
-      ];
-
-      // Add main text (centered)
-      if (text) {
-        const textX = Math.max(10, centerX - text.length * 4); // Approximate text positioning
-        tsplCommands.push(`TEXT ${textX},20,"3",0,1,1,"${text}"`);
-      }
-
-      // Add barcode if provided (centered)
-      if (barcode) {
-        const barcodeX = centerX - 50; // Center barcode
-        tsplCommands.push(`BARCODE ${barcodeX},60,"128",30,0,2,2,"${barcode}"`);
-      }
-
-      // Add QR code if provided (centered)
-      if (qrCode) {
-        const qrSize = 40; // QR code size in dots
-        const qrX = centerX - qrSize / 2;
-        tsplCommands.push(`QRCODE ${qrX},100,L,5,0,"${qrCode}"`);
-      }
-
-      // Print label
-      tsplCommands.push('PRINT 1');
+      // Generate TSPL commands using utility function
+      const tsplCommands = generate56x31Label(text, barcode, qrCode);
 
       const {PrintBridge} = NativeModules;
-      await PrintBridge.printTSPL(tsplCommands.join('\n'));
+      await PrintBridge.printTSPL(tsplCommands);
     } catch (error) {
       console.error('Error printing custom label:', error);
+      throw error;
+    } finally {
+      setIsPrinting(false);
+    }
+  };
+
+  // Print complex label with header bar, expiry line, printed line, and ingredients
+  const printComplexLabel = async (labelData: {
+    header: string;
+    expiryLine?: string;
+    printedLine?: string;
+    ingredientsLine?: string;
+    initialsLine?: string;
+  }) => {
+    if (!connectedDevice) {
+      throw new Error('No device connected');
+    }
+
+    try {
+      setIsPrinting(true);
+
+      // Generate TSPL commands using the complex label function
+      const tsplCommands = generateComplexLabel(labelData);
+
+      const {PrintBridge} = NativeModules;
+      await PrintBridge.printTSPL(tsplCommands);
+    } catch (error) {
+      console.error('Error printing complex label:', error);
       throw error;
     } finally {
       setIsPrinting(false);
@@ -412,6 +407,7 @@ export const PrinterProvider: React.FC<PrinterProviderProps> = ({children}) => {
     refreshConnectionStatus,
     printHelloWorld,
     printCustomLabel,
+    printComplexLabel,
     printTestLabel,
     printESCTest,
   };

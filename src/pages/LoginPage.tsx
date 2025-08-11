@@ -9,7 +9,15 @@ import {
   Platform,
   Alert,
 } from 'react-native';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import {
+  Printer,
+  FileText,
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  LogIn,
+} from 'lucide-react-native';
 import {useAuth} from '../contexts/AuthContext';
 
 const LoginPage: React.FC = () => {
@@ -75,9 +83,9 @@ const LoginPage: React.FC = () => {
         {/* Logo/Header */}
         <View style={styles.header}>
           <View style={styles.logoContainer}>
-            <MaterialIcons name="print" size={60} color="#8A2BE2" />
+            <Printer size={60} color="#8A2BE2" />
             <View style={styles.labelIcon}>
-              <MaterialIcons name="label" size={20} color="#8A2BE2" />
+              <FileText size={20} color="#8A2BE2" />
             </View>
           </View>
           <Text style={styles.appTitle}>InstaLabel</Text>
@@ -94,7 +102,7 @@ const LoginPage: React.FC = () => {
 
           {/* Email Input */}
           <View style={styles.inputContainer}>
-            <MaterialIcons name="email" size={20} color="#8A2BE2" />
+            <Mail size={20} color="#8A2BE2" />
             <TextInput
               style={styles.textInput}
               placeholder="your.email@company.com"
@@ -110,7 +118,7 @@ const LoginPage: React.FC = () => {
 
           {/* Password Input */}
           <View style={styles.inputContainer}>
-            <MaterialIcons name="lock" size={20} color="#8A2BE2" />
+            <Lock size={20} color="#8A2BE2" />
             <TextInput
               style={styles.textInput}
               placeholder="Enter your password"
@@ -125,11 +133,11 @@ const LoginPage: React.FC = () => {
             <TouchableOpacity
               style={styles.passwordToggle}
               onPress={() => setShowPassword(!showPassword)}>
-              <MaterialIcons
-                name={showPassword ? 'visibility' : 'visibility-off'}
-                size={20}
-                color="#8A2BE2"
-              />
+              {showPassword ? (
+                <EyeOff size={20} color="#8A2BE2" />
+              ) : (
+                <Eye size={20} color="#8A2BE2" />
+              )}
             </TouchableOpacity>
           </View>
 
@@ -138,7 +146,7 @@ const LoginPage: React.FC = () => {
             style={[styles.loginButton, isLoading && styles.disabledButton]}
             onPress={handleLogin}
             disabled={isLoading}>
-            <MaterialIcons name="login" size={20} color="white" />
+            <LogIn size={20} color="white" />
             <Text style={styles.loginButtonText}>
               {isLoading ? 'Signing In...' : 'Sign In'}
             </Text>

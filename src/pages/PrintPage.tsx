@@ -10,7 +10,14 @@ import {
   StyleSheet,
   TextInput,
 } from 'react-native';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import {
+  RefreshCw,
+  Printer,
+  Bug,
+  Receipt,
+  Image,
+  FileText,
+} from 'lucide-react-native';
 import {usePrinter} from '../PrinterContext';
 
 const PrintPage: React.FC = () => {
@@ -196,8 +203,7 @@ const PrintPage: React.FC = () => {
           <Text style={styles.sectionTitle}>Printer Status</Text>
           <View style={styles.statusContainer}>
             <View style={styles.statusItem}>
-              <MaterialIcons
-                name={connectedDevice ? 'print' : 'print-disabled'}
+              <Printer
                 size={24}
                 color={connectedDevice ? '#4CAF50' : '#F44336'}
               />
@@ -210,7 +216,7 @@ const PrintPage: React.FC = () => {
             <TouchableOpacity
               style={[styles.button, styles.refreshButton]}
               onPress={refreshConnectionStatus}>
-              <MaterialIcons name="refresh" size={20} color="white" />
+              <RefreshCw size={20} color="white" />
               <Text style={styles.buttonText}>Refresh</Text>
             </TouchableOpacity>
           </View>
@@ -241,7 +247,7 @@ const PrintPage: React.FC = () => {
             ]}
             onPress={handlePrintHelloWorld}
             disabled={!connectedDevice || isPrinting}>
-            <MaterialIcons name="print" size={24} color="white" />
+            <Printer size={24} color="white" />
             <Text style={styles.printButtonText}>
               {isPrinting ? 'Printing...' : 'Print 56x31mm Label'}
             </Text>
@@ -256,7 +262,7 @@ const PrintPage: React.FC = () => {
             ]}
             onPress={handlePrintTestLabel}
             disabled={!connectedDevice || isPrinting}>
-            <MaterialIcons name="bug-report" size={24} color="white" />
+            <Bug size={24} color="white" />
             <Text style={styles.printButtonText}>
               {isPrinting ? 'Printing...' : 'Print Test Label (50x30)'}
             </Text>
@@ -271,7 +277,7 @@ const PrintPage: React.FC = () => {
             ]}
             onPress={handlePrintESCTest}
             disabled={!connectedDevice || isPrinting}>
-            <MaterialIcons name="receipt" size={24} color="white" />
+            <Receipt size={24} color="white" />
             <Text style={styles.printButtonText}>
               {isPrinting ? 'Printing...' : 'Print ESC/POS Test'}
             </Text>
@@ -286,7 +292,7 @@ const PrintPage: React.FC = () => {
             ]}
             onPress={handleGenerateAndPrintPNG}
             disabled={!connectedDevice || isPrinting}>
-            <MaterialIcons name="image" size={24} color="white" />
+            <Image size={24} color="white" />
             <Text style={styles.printButtonText}>
               {isPrinting ? 'Generating PNG...' : 'Generate & Print PNG Label'}
             </Text>
@@ -335,7 +341,7 @@ const PrintPage: React.FC = () => {
               ]}
               onPress={handlePrintCustomLabel}
               disabled={!connectedDevice || isPrinting}>
-              <MaterialIcons name="label" size={24} color="white" />
+              <FileText size={24} color="white" />
               <Text style={styles.printButtonText}>
                 {isPrinting ? 'Printing...' : 'Print Custom 56x31mm Label'}
               </Text>

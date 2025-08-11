@@ -6,12 +6,18 @@ import {
   StyleSheet,
   SafeAreaView,
 } from 'react-native';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import {
+  Bluetooth,
+  Printer,
+  History,
+  Settings,
+  FileText,
+} from 'lucide-react-native';
 
 // Import pages
-import PrinterConnectionPage from '../pages/PrinterConnectionPage';
-import PrintPage from '../pages/PrintPage';
 import SettingsPage from '../pages/SettingsPage';
+import PrintPage from '../pages/PrintPage';
+import PPDsPage from '../pages/PPDsPage';
 import HistoryPage from '../pages/HistoryPage';
 import LabelsPage from '../pages/LabelsPage';
 
@@ -23,26 +29,29 @@ const CustomTabNavigator: React.FC = () => {
   const renderTabContent = () => {
     switch (activeTab) {
       case 'Settings':
-        return <PrinterConnectionPage />;
+        return <SettingsPage />;
       case 'Print':
         return <PrintPage />;
       case 'Logs':
         return <HistoryPage />;
       case 'PPDS':
-        return <SettingsPage />;
+        return <PPDsPage />;
       case 'Labels':
         return <LabelsPage />;
       default:
-        return <PrinterConnectionPage />;
+        return <SettingsPage />;
     }
   };
 
-  const renderTab = (tabName: TabType, iconName: string, title: string) => (
+  const renderTab = (
+    tabName: TabType,
+    IconComponent: React.ComponentType<any>,
+    title: string,
+  ) => (
     <TouchableOpacity
       style={[styles.tab, activeTab === tabName && styles.activeTab]}
       onPress={() => setActiveTab(tabName)}>
-      <MaterialIcons
-        name={iconName}
+      <IconComponent
         size={24}
         color={activeTab === tabName ? '#8A2BE2' : '#666'}
       />
@@ -58,11 +67,11 @@ const CustomTabNavigator: React.FC = () => {
       <View style={styles.content}>{renderTabContent()}</View>
 
       <View style={styles.tabBar}>
-        {renderTab('Settings', 'bluetooth', 'Settings')}
-        {renderTab('Print', 'print', 'Print')}
-        {renderTab('Logs', 'history', 'Logs')}
-        {renderTab('PPDS', 'settings', 'PPDS')}
-        {renderTab('Labels', 'label', 'Labels')}
+        {renderTab('Settings', Bluetooth, 'Settings')}
+        {renderTab('Print', Printer, 'Print')}
+        {renderTab('Logs', History, 'Print Sessions')}
+        {renderTab('PPDS', Settings, 'PPDS')}
+        {renderTab('Labels', FileText, 'Labels')}
       </View>
     </SafeAreaView>
   );

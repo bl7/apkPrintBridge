@@ -4,40 +4,36 @@ import React, {
   useState,
   useEffect,
   ReactNode,
+  useCallback,
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {
-  apiService,
-  LoginRequest,
-  LoginResponse,
-  ApiError,
-} from '../services/api';
+import {apiService, LoginRequest} from '../services/api';
 
-// Types for authentication context
+// Storage keys
+const STORAGE_KEYS = {
+  ACCESS_TOKEN: 'access_token',
+  USER_DATA: 'user_data',
+} as const;
+
 interface User {
   id: string;
   email: string;
   name: string;
+  company_name?: string; // Add company name field
 }
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  accessToken: string | null;
   login: (credentials: LoginRequest) => Promise<void>;
   logout: () => Promise<void>;
+  handleTokenExpiration: () => Promise<void>;
 }
 
-// Storage keys
-const STORAGE_KEYS = {
-  ACCESS_TOKEN: 'instalabel_access_token',
-  USER_DATA: 'instalabel_user_data',
-};
-
-// Create context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Provider component
 interface AuthProviderProps {
   children: ReactNode;
 }
@@ -46,49 +42,40 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-
-  // Check if user is already logged in on app start
-  useEffect(() => {
-    checkAuthStatus();
-  }, []);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
 
   // Check authentication status from stored tokens
-  const checkAuthStatus = async () => {
+  const checkAuthStatus = useCallback(async () => {
     try {
-      const accessToken = await AsyncStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
+      const storedToken = await AsyncStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
       const userData = await AsyncStorage.getItem(STORAGE_KEYS.USER_DATA);
 
-      if (accessToken && userData) {
+      if (storedToken && userData) {
         // Set token in API service
-        apiService.setAccessToken(accessToken);
+        apiService.setAccessToken(storedToken);
 
         // Parse and set user data
         const parsedUser = JSON.parse(userData);
         setUser(parsedUser);
         setIsAuthenticated(true);
+        setAccessToken(storedToken);
+
+        // No need to validate token - just trust the stored token
+        // If it's invalid, the API calls will fail and we can handle it then
       }
-    } catch (error) {
-      console.error('Error checking auth status:', error);
+    } catch (err) {
+      console.error('Error checking auth status:', err);
       await clearAuthData();
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  // Store authentication data
-  const storeAuthData = async (accessToken: string, userData: User) => {
-    try {
-      await AsyncStorage.multiSet([
-        [STORAGE_KEYS.ACCESS_TOKEN, accessToken],
-        [STORAGE_KEYS.USER_DATA, JSON.stringify(userData)],
-      ]);
-    } catch (error) {
-      console.error('Error storing auth data:', error);
-      throw new Error('Failed to save authentication data');
-    }
-  };
+  // Check if user is already logged in on app start
+  useEffect(() => {
+    checkAuthStatus();
+  }, [checkAuthStatus]);
 
-  // Clear authentication data
   const clearAuthData = async () => {
     try {
       await AsyncStorage.multiRemove([
@@ -102,28 +89,90 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
       // Clear state
       setUser(null);
       setIsAuthenticated(false);
-    } catch (error) {
-      console.error('Error clearing auth data:', error);
+      setAccessToken(null);
+    } catch (err) {
+      console.error('Error clearing auth data:', err);
     }
   };
 
-  // Login function
+  // Handle token expiration
+  const handleTokenExpiration = useCallback(async () => {
+    console.warn('🔄 Token expired, logging out user');
+    await clearAuthData();
+  }, []);
+
   const login = async (credentials: LoginRequest) => {
     try {
       setIsLoading(true);
 
-      // Call API login
-      const response: LoginResponse = await apiService.login(credentials);
+      const response = await apiService.login(credentials);
+
+      // Fetch profile data to get company name
+      let companyName: string | undefined;
+      try {
+        console.log('🔍 Fetching profile data for user:', response.uuid);
+        console.log(
+          '🔍 Profile API endpoint:',
+          `https://webdashboard-two.vercel.app/api/profile?user_id=${response.uuid}`,
+        );
+
+        const profileResponse = await apiService.getProfile(response.uuid);
+
+        console.log('📡 Raw profile API response:', profileResponse);
+        console.log('📋 Profile response type:', typeof profileResponse);
+        console.log('📋 Profile response keys:', Object.keys(profileResponse));
+
+        if (profileResponse && profileResponse.profile) {
+          console.log(
+            '👤 Profile object keys:',
+            Object.keys(profileResponse.profile),
+          );
+          console.log(
+            '🏢 Company name from profile:',
+            profileResponse.profile.company_name,
+          );
+          companyName = profileResponse.profile.company_name;
+        } else {
+          console.warn(
+            '⚠️ Profile response structure unexpected:',
+            profileResponse,
+          );
+        }
+
+        console.log('✅ Profile data fetched successfully:', {
+          company_name: companyName,
+          full_profile: profileResponse.profile,
+        });
+      } catch (profileError) {
+        console.warn('⚠️ Failed to fetch profile data:', profileError);
+        console.error('❌ Profile fetch error details:', {
+          error: profileError,
+          errorMessage:
+            profileError instanceof Error
+              ? profileError.message
+              : 'Unknown error',
+          errorStack:
+            profileError instanceof Error
+              ? profileError.stack
+              : 'No stack trace',
+        });
+        // Continue without company name if profile fetch fails
+      }
 
       // Transform API response to our User interface
       const userData: User = {
         id: response.uuid,
         email: response.email,
         name: response.name,
+        company_name: companyName, // Include company name if available
       };
 
-      // Store token and user data
-      await storeAuthData(response.token, userData);
+      // Store tokens and user data
+      await AsyncStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, response.token);
+      await AsyncStorage.setItem(
+        STORAGE_KEYS.USER_DATA,
+        JSON.stringify(userData),
+      );
 
       // Set token in API service
       apiService.setAccessToken(response.token);
@@ -131,16 +180,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
       // Update state
       setUser(userData);
       setIsAuthenticated(true);
-    } catch (error) {
-      console.error('Login error:', error);
-
-      // Handle specific API errors
-      if (error && typeof error === 'object' && 'message' in error) {
-        const apiError = error as ApiError;
-        throw new Error(apiError.message);
-      }
-
-      throw new Error('Login failed. Please try again.');
+      setAccessToken(response.token);
+    } catch (err) {
+      console.error('Login error:', err);
+      throw err;
     } finally {
       setIsLoading(false);
     }
@@ -153,8 +196,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
 
       // Clear all local data
       await clearAuthData();
-    } catch (error) {
-      console.error('Logout error:', error);
+    } catch (err) {
+      console.error('Logout error:', err);
       // Force clear data even if there's an error
       await clearAuthData();
     } finally {
@@ -163,17 +206,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
   };
 
   // Context value
-  const contextValue: AuthContextType = {
+  const value: AuthContextType = {
     user,
     isAuthenticated,
     isLoading,
+    accessToken,
     login,
     logout,
+    handleTokenExpiration,
   };
 
-  return (
-    <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 // Hook to use auth context

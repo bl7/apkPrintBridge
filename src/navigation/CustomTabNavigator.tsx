@@ -8,10 +8,10 @@ import {
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 
-import PrinterConnectionPage from '../pages/PrinterConnectionPage';
+import SettingsPage from '../pages/SettingsPage';
 import PrintPage from '../pages/PrintPage';
 import HistoryPage from '../pages/HistoryPage';
-import SettingsPage from '../pages/SettingsPage';
+import PPDsPage from '../pages/PPDsPage';
 import LabelsPage from '../pages/LabelsPage';
 
 type TabType = 'Settings' | 'Print' | 'Logs' | 'PPDS' | 'Labels';
@@ -22,17 +22,17 @@ const CustomTabNavigator: React.FC = () => {
   const renderTabContent = () => {
     switch (activeTab) {
       case 'Settings':
-        return <PrinterConnectionPage />;
+        return <SettingsPage />;
       case 'Print':
         return <PrintPage />;
       case 'Logs':
         return <HistoryPage />;
       case 'PPDS':
-        return <SettingsPage />;
+        return <PPDsPage />;
       case 'Labels':
         return <LabelsPage />;
       default:
-        return <PrinterConnectionPage />;
+        return <SettingsPage />;
     }
   };
 
@@ -64,7 +64,7 @@ const CustomTabNavigator: React.FC = () => {
       <View style={styles.tabBar}>
         {renderTab('Settings', 'bluetooth', 'Settings')}
         {renderTab('Print', 'print', 'Print')}
-        {renderTab('Logs', 'history', 'Logs')}
+        {renderTab('Logs', 'history', 'Print Sessions')}
         {renderTab('PPDS', 'settings', 'PPDS')}
         {renderTab('Labels', 'label', 'Labels')}
       </View>

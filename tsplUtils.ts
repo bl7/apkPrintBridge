@@ -323,6 +323,128 @@ export const generateInventoryLabel = (
   return tspl;
 };
 
+/**
+ * Generate 56x31mm label with border, white background, and black text
+ */
+export const generate56x31Label = (
+  text: string,
+  barcode?: string,
+  qrCode?: string,
+  config: Partial<TSPLConfig> = {},
+): string => {
+  const {dpi = 203, gap = 2, direction = 0, density = 8} = config;
+
+  let tspl = '';
+
+  // Initialize label with exact 56x31mm dimensions
+  tspl += `SIZE 56mm,31mm\n`;
+  tspl += `GAP ${gap}mm,0mm\n`;
+  tspl += `DIRECTION ${direction}\n`;
+  tspl += `DENSITY ${density}\n`;
+  tspl += 'CLS\n';
+
+  // Add border around the entire label (BOX command: BOX x1,y1,x2,y2,thickness)
+  // Using 203 DPI: 56mm = ~447 dots, 31mm = ~248 dots
+  // Border with 2-dot thickness, leaving small margin
+  tspl += 'BOX 5,5,442,243,2\n';
+
+  // Calculate center position
+  const centerX = 447 / 2; // 56mm in dots / 2
+
+  // Add main text (centered, black text on white background)
+  if (text) {
+    const textX = Math.max(10, centerX - text.length * 4); // Approximate text positioning
+    tspl += `TEXT ${textX},20,"3",0,1,1,"${text}"\n`;
+  }
+
+  // Add barcode if provided (centered)
+  if (barcode) {
+    const barcodeX = centerX - 50; // Center barcode
+    tspl += `BARCODE ${barcodeX},60,"128",30,0,2,2,"${barcode}"\n`;
+  }
+
+  // Add QR code if provided (centered)
+  if (qrCode) {
+    const qrSize = 40; // QR code size in dots
+    const qrX = centerX - qrSize / 2;
+    tspl += `QRCODE ${qrX},100,L,5,0,"${qrCode}"\n`;
+  }
+
+  // Print label
+  tspl += 'PRINT 1\n';
+
+  return tspl;
+};
+
+/**
+ * Generate complex label with header bar, expiry line, printed line, and ingredients
+ * This matches the exact layout shown in the label preview
+ */
+export const generateComplexLabel = (
+  labelData: {
+    header: string;
+    expiryLine?: string;
+    printedLine?: string;
+    ingredientsLine?: string;
+    initialsLine?: string;
+  },
+  config: Partial<TSPLConfig> = {},
+): string => {
+  const {dpi = 203, gap = 2, direction = 0, density = 8} = config;
+
+  let tspl = '';
+
+  // Initialize label with exact 56x31mm dimensions
+  tspl += `SIZE 56mm,31mm\n`;
+  tspl += `GAP ${gap}mm,0mm\n`;
+  tspl += `DIRECTION ${direction}\n`;
+  tspl += `DENSITY ${density}\n`;
+  tspl += 'CLS\n';
+
+  // Using 203 DPI: 56mm = ~447 dots, 31mm = ~248 dots
+
+  // 1. Draw black header bar at the top (rounded corners)
+  // Header bar: full width, height ~40 dots (about 5mm)
+  tspl += 'BOX 0,0,447,40,0\n'; // Black background for header
+
+  // 2. Header text (white text on black background)
+  if (labelData.header) {
+    // Center the header text
+    const headerText = labelData.header.toUpperCase();
+    const headerX = Math.max(10, (447 - headerText.length * 8) / 2); // Approximate centering
+    tspl += `TEXT ${headerX},25,"3",0,1,1,"${headerText}"\n`;
+  }
+
+  // 3. Expiry line (if exists)
+  if (labelData.expiryLine) {
+    const expiryY = 50; // Below header
+    tspl += `TEXT 10,${expiryY},"2",0,1,1,"${labelData.expiryLine}"\n`;
+  }
+
+  // 4. Printed line (if exists)
+  if (labelData.printedLine) {
+    const printedY = 70; // Below expiry line
+    tspl += `TEXT 10,${printedY},"2",0,1,1,"${labelData.printedLine}"\n`;
+  }
+
+  // 5. Ingredients line (if exists)
+  if (labelData.ingredientsLine) {
+    const ingredientsY = 90; // Below printed line
+    tspl += `TEXT 10,${ingredientsY},"2",0,1,1,"${labelData.ingredientsLine}"\n`;
+  }
+
+  // 6. Initials line (if exists and not already shown in printed line)
+  if (labelData.initialsLine && !labelData.printedLine) {
+    const initialsY = 110; // Below ingredients line
+    tspl += `TEXT 10,${initialsY},"2",0,1,1,"${labelData.initialsLine}"\n`;
+  }
+
+  // Print label
+  tspl += 'PRINT 1\n';
+
+  return tspl;
+};
+
 export default {
   mmToDots,
   generateLabelSetup,
@@ -335,4 +457,6 @@ export default {
   generateProductLabel,
   generateReceipt,
   generateInventoryLabel,
+  generate56x31Label,
+  generateComplexLabel,
 };

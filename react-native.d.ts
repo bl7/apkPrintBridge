@@ -12,4 +12,6 @@ declare module 'react-native' {
   export const Platform: any;
   export const StyleSheet: any;
   export const NativeModules: any;
+  export const RefreshControl: any;
+  export const ActivityIndicator: any;
 }

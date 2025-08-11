@@ -39,35 +39,16 @@ import LabelSettingsDisplay from '../components/LabelSettingsDisplay';
 import {
   Search,
   SearchX,
-  List,
   FileText,
   Lock,
   Printer,
-  CheckCircle,
-  AlertTriangle,
-  Wheat,
-  Fish,
-  Egg,
-  Nut,
-  Bean,
-  Milk,
-  Carrot,
-  Flame,
-  Circle,
-  Wine,
-  Flower,
-  Shell,
-  Calendar,
   Plus,
   Minus,
   X,
-  Filter,
-  SortAsc,
-  Clock,
-  Tag,
   ShoppingCart,
-  Settings,
   Eye,
+  AlertTriangle,
+  CheckCircle,
 } from 'lucide-react-native';
 
 // Types for the labels system
@@ -100,9 +81,6 @@ const PPDSPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
-  const [sortBy, setSortBy] = useState<'name' | 'category' | 'expiry'>('name');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   // Print settings
   const [customExpiry, setCustomExpiry] = useState<Record<string, string>>({});
@@ -225,17 +203,28 @@ const PPDSPage: React.FC = () => {
             : qItem,
         ),
       );
-      Alert.alert(
-        'Updated',
-        `${item.menuItemName} quantity increased in queue`,
-      );
     } else {
       // Add new item to queue
       const defaultLabelType: LabelType = 'ppds';
-      const expiryDays =
-        labelSettings[defaultLabelType] ||
-        getDefaultExpiryDays(defaultLabelType);
-      const expiryDate = calculateExpiryDate(expiryDays);
+
+      // Safe fallback for expiry days
+      let expiryDays = 5; // Default PPDS expiry
+      try {
+        if (labelSettings[defaultLabelType]) {
+          expiryDays = labelSettings[defaultLabelType];
+        } else {
+          expiryDays = getDefaultExpiryDays(defaultLabelType);
+        }
+      } catch (error) {
+        console.warn('Error getting expiry days, using default:', error);
+        expiryDays = 5; // Fallback to 5 days for PPDS
+      }
+
+      const expiryDate = calculateExpiryDate(
+        defaultLabelType,
+        undefined,
+        expiryDays,
+      );
 
       const newQueueItem: PrintQueueItem = {
         uid: item.menuItemID,
@@ -250,7 +239,6 @@ const PPDSPage: React.FC = () => {
       };
 
       setPrintQueue(prev => [...prev, newQueueItem]);
-      Alert.alert('Added', `${item.menuItemName} added to PPDS queue`);
     }
   };
 
@@ -441,49 +429,19 @@ const PPDSPage: React.FC = () => {
   const renderTabContent = () => {
     const items = menuItems || [];
 
-    // Enhanced filtering and sorting
+    // Simple filtering by name only
     let filteredItems = items.filter(item => {
       const name = item.menuItemName;
       if (!name) return false;
 
-      const matchesSearch = name
-        .toLowerCase()
-        .includes((searchTerm || '').toLowerCase());
-      const matchesCategory =
-        !showFilters ||
-        !searchTerm ||
-        item.categoryName?.toLowerCase().includes(searchTerm.toLowerCase());
-
-      return matchesSearch && matchesCategory;
+      return name.toLowerCase().includes((searchTerm || '').toLowerCase());
     });
 
-    // Apply sorting
+    // Sort by name alphabetically
     filteredItems.sort((a, b) => {
-      let aValue: any, bValue: any;
-
-      switch (sortBy) {
-        case 'name':
-          aValue = a.menuItemName || '';
-          bValue = b.menuItemName || '';
-          break;
-        case 'category':
-          aValue = a.categoryName || '';
-          bValue = b.categoryName || '';
-          break;
-        case 'expiry':
-          aValue = a.expiryDays || 0;
-          bValue = b.expiryDays || 0;
-          break;
-        default:
-          aValue = a.menuItemName || '';
-          bValue = b.menuItemName || '';
-      }
-
-      if (sortOrder === 'asc') {
-        return aValue > bValue ? 1 : -1;
-      } else {
-        return aValue < bValue ? 1 : -1;
-      }
+      const aName = a.menuItemName || '';
+      const bName = b.menuItemName || '';
+      return aName.localeCompare(bName);
     });
 
     // Calculate pagination
@@ -520,69 +478,7 @@ const PPDSPage: React.FC = () => {
               </TouchableOpacity>
             ) : null}
           </View>
-
-          <View style={styles.filterControls}>
-            <TouchableOpacity
-              style={[
-                styles.filterButton,
-                showFilters && styles.filterButtonActive,
-              ]}
-              onPress={() => setShowFilters(!showFilters)}>
-              <Filter size={16} color={showFilters ? '#fff' : '#666'} />
-              <Text
-                style={[
-                  styles.filterButtonText,
-                  showFilters && styles.filterButtonTextActive,
-                ]}>
-                Filters
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.sortButton}
-              onPress={() =>
-                setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
-              }>
-              <SortAsc
-                size={16}
-                color="#666"
-                style={[
-                  sortOrder === 'desc' && {transform: [{rotate: '180deg'}]},
-                ]}
-              />
-            </TouchableOpacity>
-          </View>
         </View>
-
-        {/* Filter Options */}
-        {showFilters && (
-          <View style={styles.filterOptions}>
-            <Text style={styles.filterLabel}>Sort by:</Text>
-            <View style={styles.sortOptions}>
-              {[
-                {key: 'name', label: 'Name'},
-                {key: 'category', label: 'Category'},
-                {key: 'expiry', label: 'Expiry Days'},
-              ].map(option => (
-                <TouchableOpacity
-                  key={option.key}
-                  style={[
-                    styles.sortOption,
-                    sortBy === option.key && styles.sortOptionActive,
-                  ]}
-                  onPress={() => setSortBy(option.key as any)}>
-                  <Text
-                    style={[
-                      styles.sortOptionText,
-                      sortBy === option.key && styles.sortOptionTextActive,
-                    ]}>
-                    {option.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        )}
 
         {/* Items List */}
         <View style={styles.itemsList}>
@@ -598,66 +494,55 @@ const PPDSPage: React.FC = () => {
             </View>
           ) : (
             <>
-              {currentItems.map(item => (
-                <TouchableOpacity
-                  key={item.menuItemID}
-                  style={styles.itemCard}
-                  onPress={() => addToPrintQueue(item, 'menu')}>
-                  <View style={styles.itemMainInfo}>
-                    <View style={styles.itemHeader}>
+              {currentItems.map(item => {
+                const isInQueue = printQueue.some(
+                  qItem => qItem.uid === item.menuItemID,
+                );
+                const queueItem = printQueue.find(
+                  qItem => qItem.uid === item.menuItemID,
+                );
+
+                return (
+                  <TouchableOpacity
+                    key={item.menuItemID}
+                    style={styles.itemCard}
+                    onPress={() => !isInQueue && addToPrintQueue(item, 'menu')}>
+                    <View style={styles.itemMainInfo}>
                       <Text style={styles.itemName}>{item.menuItemName}</Text>
-                      <View style={styles.itemBadges}>
-                        <View style={styles.categoryBadge}>
-                          <Tag size={12} color="#8A2BE2" />
-                          <Text style={styles.categoryText}>
-                            {item.categoryName || 'Uncategorized'}
-                          </Text>
-                        </View>
-                        <View style={styles.expiryBadge}>
-                          <Clock size={12} color="#FF6B35" />
-                          <Text style={styles.expiryText}>
-                            {item.expiryDays} days
-                          </Text>
-                        </View>
-                      </View>
                     </View>
 
-                    {/* Enhanced Ingredients Display */}
-                    {item.ingredients && item.ingredients.length > 0 && (
-                      <View style={styles.ingredientsSection}>
-                        <Text style={styles.ingredientsLabel}>
-                          Ingredients:
-                        </Text>
-                        <View style={styles.ingredientsList}>
-                          {item.ingredients
-                            .slice(0, 4)
-                            .map((ingredient, index) => (
-                              <View key={index} style={styles.ingredientTag}>
-                                <Text style={styles.ingredientText}>
-                                  {ingredient.ingredientName}
-                                </Text>
-                              </View>
-                            ))}
-                          {item.ingredients.length > 4 && (
-                            <Text style={styles.moreIngredients}>
-                              +{item.ingredients.length - 4} more
+                    <View style={styles.itemActions}>
+                      <TouchableOpacity
+                        style={[
+                          styles.addButton,
+                          isInQueue && styles.addButtonDisabled,
+                        ]}
+                        onPress={() =>
+                          !isInQueue && addToPrintQueue(item, 'menu')
+                        }
+                        disabled={isInQueue}>
+                        {isInQueue ? (
+                          <>
+                            <CheckCircle size={16} color="#4CAF50" />
+                            <Text
+                              style={[
+                                styles.addButtonText,
+                                styles.addButtonTextDisabled,
+                              ]}>
+                              {queueItem?.quantity || 1} in Queue
                             </Text>
-                          )}
-                        </View>
-                      </View>
-                    )}
-                  </View>
-
-                  <View style={styles.itemActions}>
-                    <TouchableOpacity
-                      style={styles.addButton}
-                      onPress={() => addToPrintQueue(item, 'menu')}>
-                      <Plus size={16} color="#fff" />
-                      <Text style={styles.addButtonText}>Add</Text>
-                    </TouchableOpacity>
-                  </View>
-                </TouchableOpacity>
-              ))}
+                          </>
+                        ) : (
+                          <>
+                            <Plus size={16} color="#fff" />
+                            <Text style={styles.addButtonText}>Add</Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
 
               {/* Enhanced Pagination */}
               {totalPages > 1 && (
@@ -719,38 +604,38 @@ const PPDSPage: React.FC = () => {
   const renderPrintQueue = () => (
     <View style={styles.queueSection}>
       <View style={styles.queueHeader}>
-        <View style={styles.queueHeaderLeft}>
-          <ShoppingCart size={24} color="#8A2BE2" />
-          <Text style={styles.sectionTitle}>PPDS Print Queue</Text>
-          <View style={styles.queueCount}>
-            <Text style={styles.queueCountText}>
-              {printQueue.length} item{printQueue.length !== 1 ? 's' : ''}
-            </Text>
+        <View style={styles.queueHeaderTop}>
+          <View style={styles.queueHeaderLeft}>
+            <ShoppingCart size={24} color="#8A2BE2" />
+            <Text style={styles.sectionTitle}>PPDS Print Queue</Text>
+            <View style={styles.queueCount}>
+              <Text style={styles.queueCountText}>
+                {printQueue.length} item{printQueue.length !== 1 ? 's' : ''}
+              </Text>
+            </View>
           </View>
         </View>
 
-        <View style={styles.queueHeaderRight}>
-          {printQueue.length > 0 && (
-            <>
-              <TouchableOpacity
-                style={styles.clearQueueButton}
-                onPress={clearPrintQueue}>
-                <X size={16} color="#F44336" />
-                <Text style={styles.clearQueueText}>Clear</Text>
-              </TouchableOpacity>
+        {printQueue.length > 0 && (
+          <View style={styles.queueHeaderButtons}>
+            <TouchableOpacity
+              style={styles.clearQueueButton}
+              onPress={clearPrintQueue}>
+              <X size={16} color="#F44336" />
+              <Text style={styles.clearQueueText}>Clear</Text>
+            </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.printButton}
-                onPress={printLabels}
-                disabled={!printQueue || printQueue.length === 0 || isPrinting}>
-                <Printer size={16} color="#fff" />
-                <Text style={styles.printButtonText}>
-                  {isPrinting ? 'Printing...' : 'Print All'}
-                </Text>
-              </TouchableOpacity>
-            </>
-          )}
-        </View>
+            <TouchableOpacity
+              style={styles.printButton}
+              onPress={printLabels}
+              disabled={!printQueue || printQueue.length === 0 || isPrinting}>
+              <Printer size={16} color="#fff" />
+              <Text style={styles.printButtonText}>
+                {isPrinting ? 'Printing...' : 'Print All'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
       {printQueue.length === 0 ? (
@@ -785,11 +670,6 @@ const PPDSPage: React.FC = () => {
                           </Text>
                         </View>
                       ))}
-                      {item.ingredients.length > 3 && (
-                        <Text style={styles.moreIngredients}>
-                          +{item.ingredients.length - 3} more
-                        </Text>
-                      )}
                     </View>
                   </View>
                 )}
@@ -1077,10 +957,7 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
 
-  // Enhanced Search and Filter
-  searchFilterContainer: {
-    marginBottom: 20,
-  },
+  // Search Bar
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1088,7 +965,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    marginBottom: 16,
+    marginBottom: 20,
     borderWidth: 1,
     borderColor: '#e9ecef',
   },
@@ -1099,80 +976,6 @@ const styles = StyleSheet.create({
     color: '#333',
     marginLeft: 12,
   },
-  filterControls: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  filterButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
-  },
-  filterButtonActive: {
-    backgroundColor: '#8A2BE2',
-    borderColor: '#8A2BE2',
-  },
-  filterButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#666',
-    marginLeft: 6,
-  },
-  filterButtonTextActive: {
-    color: '#fff',
-  },
-  sortButton: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 8,
-    padding: 8,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
-  },
-
-  // Filter Options
-  filterOptions: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
-  },
-  filterLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 12,
-  },
-  sortOptions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  sortOption: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
-  },
-  sortOptionActive: {
-    backgroundColor: '#8A2BE2',
-    borderColor: '#8A2BE2',
-  },
-  sortOptionText: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
-  },
-  sortOptionTextActive: {
-    color: '#fff',
-  },
 
   // Enhanced Items List
   itemsList: {
@@ -1181,7 +984,7 @@ const styles = StyleSheet.create({
   itemCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
@@ -1196,83 +999,14 @@ const styles = StyleSheet.create({
   },
   itemMainInfo: {
     flex: 1,
-    marginRight: 16,
-  },
-  itemHeader: {
-    marginBottom: 12,
   },
   itemName: {
     fontSize: 18,
     fontWeight: '600',
     color: '#1a1a1a',
-    marginBottom: 8,
     lineHeight: 24,
   },
-  itemBadges: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  categoryBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f0f0ff',
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  categoryText: {
-    fontSize: 12,
-    color: '#8A2BE2',
-    fontWeight: '500',
-    marginLeft: 4,
-  },
-  expiryBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff5f0',
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  expiryText: {
-    fontSize: 12,
-    color: '#FF6B35',
-    fontWeight: '500',
-    marginLeft: 4,
-  },
-  ingredientsSection: {
-    marginTop: 8,
-  },
-  ingredientsLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
-  },
-  ingredientsList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  ingredientTag: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
-  },
-  ingredientText: {
-    fontSize: 12,
-    color: '#666',
-  },
-  moreIngredients: {
-    fontSize: 12,
-    color: '#999',
-    fontStyle: 'italic',
-    alignSelf: 'center',
-    marginTop: 4,
-  },
+
   itemActions: {
     alignItems: 'center',
   },
@@ -1285,10 +1019,18 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     gap: 6,
   },
+  addButtonDisabled: {
+    backgroundColor: '#f8f9fa',
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+  },
   addButtonText: {
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
+  },
+  addButtonTextDisabled: {
+    color: '#4CAF50',
   },
 
   // Enhanced Print Queue
@@ -1305,17 +1047,17 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   queueHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: 20,
+  },
+  queueHeaderTop: {
+    marginBottom: 16,
   },
   queueHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
-  queueHeaderRight: {
+  queueHeaderButtons: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,

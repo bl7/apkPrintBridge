@@ -83,9 +83,9 @@ const LabelPreview: React.FC<LabelPreviewProps> = ({
     companyName,
   );
 
-  // Get label height styling - fixed to 31mm
-  const labelHeight = getLabelHeightPixels('31mm');
-  const fontSize = getOptimalFontSize('31mm');
+  // Get label height styling - fixed to 40mm
+  const labelHeight = getLabelHeightPixels('40mm');
+  const fontSize = getOptimalFontSize('40mm');
 
   // Format the expiry date for display
   const formatExpiryDate = (dateString: string) => {
@@ -194,7 +194,7 @@ const LabelPreview: React.FC<LabelPreviewProps> = ({
 
         {/* Label Dimensions Indicator */}
         <Text style={styles.labelHeightIndicator}>
-          Size: 56mm × 31mm • {getLabelTypeDisplayName(item.labelType)} •{' '}
+          Size: 60mm × 40mm • {getLabelTypeDisplayName(item.labelType)} •{' '}
           {item.labelType}
         </Text>
       </View>
@@ -231,10 +231,10 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     borderWidth: 1,
     borderColor: '#000000',
-    // Actual label dimensions: 56mm x 31mm
+    // Actual label dimensions: 60mm x 40mm
     // Using 1mm = 3.78px for accurate representation
-    width: 56 * 3.78, // ~212px
-    height: 31 * 3.78, // ~117px
+    width: 60 * 3.78, // ~227px
+    height: 40 * 3.78, // ~151px
     alignSelf: 'center',
     overflow: 'hidden', // Ensure content doesn't overflow the border
   },

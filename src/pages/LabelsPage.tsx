@@ -57,6 +57,9 @@ import {
   Flower,
   Shell,
   Calendar,
+  Plus,
+  ShoppingCart,
+  X,
 } from 'lucide-react-native';
 
 // Types for the labels system
@@ -361,7 +364,6 @@ const LabelsPage: React.FC = () => {
 
     if (!name) {
       console.error('Cannot add item with undefined name to queue:', item);
-      Alert.alert('Error', 'Cannot add item with missing name to queue');
       return;
     }
 
@@ -834,6 +836,10 @@ const LabelsPage: React.FC = () => {
                     queueItem =>
                       queueItem.name && name && queueItem.name === name,
                   );
+                  const queueItem = printQueue.find(
+                    queueItem =>
+                      queueItem.name && name && queueItem.name === name,
+                  );
 
                   return (
                     <View
@@ -850,12 +856,29 @@ const LabelsPage: React.FC = () => {
                       <TouchableOpacity
                         style={[
                           styles.addButton,
-                          isInQueue && styles.addedButton,
+                          isInQueue && styles.addButtonDisabled,
                         ]}
-                        onPress={() => addToPrintQueue(item, activeTab)}>
-                        <Text style={styles.addButtonText}>
-                          {isInQueue ? 'Added' : 'Add'}
-                        </Text>
+                        onPress={() =>
+                          !isInQueue && addToPrintQueue(item, activeTab)
+                        }
+                        disabled={isInQueue}>
+                        {isInQueue ? (
+                          <>
+                            <CheckCircle size={16} color="#4CAF50" />
+                            <Text
+                              style={[
+                                styles.addButtonText,
+                                styles.addButtonTextDisabled,
+                              ]}>
+                              {queueItem?.quantity || 1} in Queue
+                            </Text>
+                          </>
+                        ) : (
+                          <>
+                            <Plus size={16} color="#fff" />
+                            <Text style={styles.addButtonText}>Add</Text>
+                          </>
+                        )}
                       </TouchableOpacity>
                     </View>
                   );
@@ -921,39 +944,38 @@ const LabelsPage: React.FC = () => {
   const renderPrintQueue = () => (
     <View style={styles.queueSection}>
       <View style={styles.queueHeader}>
-        <Text style={styles.sectionTitle}>
-          Print Queue ({Math.max(0, printQueue.length)})
-        </Text>
-
-        {/* Printer Status Indicator */}
-        <View style={styles.printerStatusIndicator}>
-          <Printer size={16} color={connectedDevice ? '#4CAF50' : '#F44336'} />
-          <Text
-            style={[
-              styles.printerStatusText,
-              {color: connectedDevice ? '#4CAF50' : '#F44336'},
-            ]}>
-            {connectedDevice ? 'Printer Ready' : 'No Printer'}
-          </Text>
+        <View style={styles.queueHeaderTop}>
+          <View style={styles.queueHeaderLeft}>
+            <ShoppingCart size={24} color="#8A2BE2" />
+            <Text style={styles.sectionTitle}>Print Queue</Text>
+            <View style={styles.queueCount}>
+              <Text style={styles.queueCountText}>
+                {printQueue.length} item{printQueue.length !== 1 ? 's' : ''}
+              </Text>
+            </View>
+          </View>
         </View>
 
-        <View style={styles.queueActions}>
-          <TouchableOpacity
-            style={styles.printLabelsButton}
-            onPress={printLabels}
-            disabled={!printQueue || printQueue.length === 0 || isPrinting}>
-            <Text style={styles.printLabelsButtonText}>
-              {isPrinting ? 'Printing...' : 'Print Labels'}
-            </Text>
-          </TouchableOpacity>
-          {printQueue && printQueue.length > 0 && (
+        {printQueue.length > 0 && (
+          <View style={styles.queueHeaderButtons}>
             <TouchableOpacity
               style={styles.clearQueueButton}
               onPress={clearPrintQueue}>
-              <Text style={styles.clearQueueText}>Clear Queue</Text>
+              <X size={16} color="#F44336" />
+              <Text style={styles.clearQueueText}>Clear</Text>
             </TouchableOpacity>
-          )}
-        </View>
+
+            <TouchableOpacity
+              style={styles.printLabelsButton}
+              onPress={printLabels}
+              disabled={!printQueue || printQueue.length === 0 || isPrinting}>
+              <Printer size={16} color="#fff" />
+              <Text style={styles.printLabelsButtonText}>
+                {isPrinting ? 'Printing...' : 'Print All'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
       {!printQueue || printQueue.length === 0 ? (
@@ -1192,6 +1214,40 @@ const LabelsPage: React.FC = () => {
         refreshControl={
           <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
         }>
+        {/* Labels Header */}
+        <View style={styles.labelsHeader}>
+          <View style={styles.labelsHeaderIcon}>
+            <FileText size={32} color="#8A2BE2" />
+          </View>
+          <Text style={styles.labelsTitle}>Labels</Text>
+          <Text style={styles.labelsSubtitle}>
+            Create and print custom labels for ingredients and menu items
+          </Text>
+          <View style={styles.labelsStats}>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>
+                {ingredients.length + menuItems.length}
+              </Text>
+              <Text style={styles.statLabel}>Total Items</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{printQueue.length}</Text>
+              <Text style={styles.statLabel}>In Queue</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Printer
+                size={20}
+                color={connectedDevice ? '#4CAF50' : '#F44336'}
+              />
+              <Text style={styles.statLabel}>
+                {connectedDevice ? 'Ready' : 'No Printer'}
+              </Text>
+            </View>
+          </View>
+        </View>
+
         {/* Printer Settings Section */}
         <View style={styles.settingsSection}>
           {/* Available Printers */}
@@ -1257,7 +1313,7 @@ const LabelsPage: React.FC = () => {
         {/* Label Preview Section */}
         <View style={styles.previewSection}>
           <Text style={styles.sectionTitle}>
-            Print Preview (Actual Size: 56mm × 31mm)
+            Print Preview (Actual Size: 60mm × 40mm)
           </Text>
           <Text style={styles.previewSubtitle}>
             Preview shows exactly what will be printed on each label
@@ -1272,7 +1328,7 @@ const LabelsPage: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f8f9fa',
   },
   mainScrollView: {
     flex: 1,
@@ -1280,6 +1336,67 @@ const styles = StyleSheet.create({
   mainContent: {
     padding: 16,
     paddingBottom: 40,
+  },
+
+  // Labels Header
+  labelsHeader: {
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  labelsHeaderIcon: {
+    backgroundColor: '#f0f0ff',
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 16,
+  },
+  labelsTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#1a1a1a',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  labelsSubtitle: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 22,
+  },
+  labelsStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    width: '100%',
+    paddingHorizontal: 20,
+  },
+  statItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statNumber: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#8A2BE2',
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
+  },
+  statDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: '#e0e0e0',
   },
   settingsSection: {
     backgroundColor: 'white',
@@ -1480,14 +1597,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
   },
-  addedButton: {
-    backgroundColor: '#6c757d',
+  addButtonDisabled: {
+    backgroundColor: '#f8f9fa',
+    borderWidth: 1,
+    borderColor: '#e9ecef',
   },
   addButtonText: {
     color: 'white',
     fontSize: 14,
     fontWeight: '600',
+  },
+  addButtonTextDisabled: {
+    color: '#4CAF50',
   },
   queueSection: {
     backgroundColor: 'white',
@@ -1503,26 +1629,38 @@ const styles = StyleSheet.create({
   queueHeader: {
     marginBottom: 20,
   },
-  printerStatusIndicator: {
+  queueHeaderTop: {
+    marginBottom: 16,
+  },
+  queueHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
-    paddingHorizontal: 4,
+    gap: 12,
   },
-  printerStatusText: {
-    fontSize: 12,
-    fontWeight: '500',
-    marginLeft: 8,
-  },
-  queueActions: {
+  queueHeaderButtons: {
     flexDirection: 'row',
-    marginTop: 10,
+    alignItems: 'center',
+    gap: 12,
+  },
+  queueCount: {
+    backgroundColor: '#f0f0ff',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  queueCountText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#8A2BE2',
   },
   printLabelsButton: {
-    backgroundColor: '#8A2BE2',
+    backgroundColor: '#4CAF50',
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 6,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   printLabelsButtonText: {
     color: 'white',
@@ -1530,17 +1668,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   clearQueueButton: {
-    backgroundColor: 'white',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
+    backgroundColor: '#fff5f5',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#8A2BE2',
-    marginLeft: 10,
+    borderColor: '#fed7d7',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   clearQueueText: {
-    color: '#8A2BE2',
-    fontSize: 14,
+    color: '#F44336',
+    fontSize: 12,
     fontWeight: '600',
   },
   emptyQueue: {

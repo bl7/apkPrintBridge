@@ -378,7 +378,7 @@ export const generate56x31Label = (
 
 /**
  * Generate complex label with header bar, expiry line, printed line, and ingredients
- * This matches the exact layout shown in the label preview
+ * This matches the exact layout shown in the label preview (60mm × 40mm)
  */
 export const generateComplexLabel = (
   labelData: {
@@ -394,48 +394,48 @@ export const generateComplexLabel = (
 
   let tspl = '';
 
-  // Initialize label with exact 56x31mm dimensions
-  tspl += `SIZE 56mm,31mm\n`;
+  // Initialize label with exact 60x40mm dimensions
+  tspl += `SIZE 60mm,40mm\n`;
   tspl += `GAP ${gap}mm,0mm\n`;
   tspl += `DIRECTION ${direction}\n`;
   tspl += `DENSITY ${density}\n`;
   tspl += 'CLS\n';
 
-  // Using 203 DPI: 56mm = ~447 dots, 31mm = ~248 dots
+  // Using 203 DPI: 60mm = ~480 dots, 40mm = ~320 dots
 
   // 1. Draw black header bar at the top (rounded corners)
-  // Header bar: full width, height ~40 dots (about 5mm)
-  tspl += 'BOX 0,0,447,40,0\n'; // Black background for header
+  // Header bar: full width, height ~50 dots (about 6mm)
+  tspl += 'BOX 0,0,480,50,0\n'; // Black background for header
 
   // 2. Header text (white text on black background)
   if (labelData.header) {
     // Center the header text
     const headerText = labelData.header.toUpperCase();
-    const headerX = Math.max(10, (447 - headerText.length * 8) / 2); // Approximate centering
-    tspl += `TEXT ${headerX},25,"3",0,1,1,"${headerText}"\n`;
+    const headerX = Math.max(10, (480 - headerText.length * 8) / 2); // Approximate centering
+    tspl += `TEXT ${headerX},30,"3",0,1,1,"${headerText}"\n`;
   }
 
   // 3. Expiry line (if exists)
   if (labelData.expiryLine) {
-    const expiryY = 50; // Below header
+    const expiryY = 70; // Below header
     tspl += `TEXT 10,${expiryY},"2",0,1,1,"${labelData.expiryLine}"\n`;
   }
 
   // 4. Printed line (if exists)
   if (labelData.printedLine) {
-    const printedY = 70; // Below expiry line
+    const printedY = 100; // Below expiry line
     tspl += `TEXT 10,${printedY},"2",0,1,1,"${labelData.printedLine}"\n`;
   }
 
   // 5. Ingredients line (if exists)
   if (labelData.ingredientsLine) {
-    const ingredientsY = 90; // Below printed line
+    const ingredientsY = 130; // Below printed line
     tspl += `TEXT 10,${ingredientsY},"2",0,1,1,"${labelData.ingredientsLine}"\n`;
   }
 
   // 6. Initials line (if exists and not already shown in printed line)
   if (labelData.initialsLine && !labelData.printedLine) {
-    const initialsY = 110; // Below ingredients line
+    const initialsY = 160; // Below ingredients line
     tspl += `TEXT 10,${initialsY},"2",0,1,1,"${labelData.initialsLine}"\n`;
   }
 

@@ -11,6 +11,7 @@ import {
   RefreshControl,
   ActivityIndicator,
   Platform,
+  StatusBar,
 } from 'react-native';
 import Modal from 'react-native-modal';
 import {useAuth} from '../contexts/AuthContext';
@@ -57,6 +58,7 @@ import {
   Flower,
   Shell,
   Calendar,
+  Minus,
   Plus,
   ShoppingCart,
   X,
@@ -788,15 +790,23 @@ const LabelsPage: React.FC = () => {
 
     return (
       <View style={styles.tabContent}>
-        {/* Search Bar */}
-        <View style={styles.searchContainer}>
-          <Search size={20} color="#666" />
-          <TextInput
-            style={styles.searchInput}
-            placeholder={`Search ${activeTab || 'items'}...`}
-            value={searchTerm || ''}
-            onChangeText={(text: string) => setSearchTerm(text || '')}
-          />
+        {/* Enhanced Search and Filter Bar */}
+        <View style={styles.searchFilterContainer}>
+          <View style={styles.searchContainer}>
+            <Search size={20} color="#666" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder={`Search ${activeTab || 'items'}...`}
+              value={searchTerm || ''}
+              onChangeText={(text: string) => setSearchTerm(text || '')}
+              placeholderTextColor="#999"
+            />
+            {searchTerm ? (
+              <TouchableOpacity onPress={() => setSearchTerm('')}>
+                <SearchX size={20} color="#666" />
+              </TouchableOpacity>
+            ) : null}
+          </View>
         </View>
 
         {/* Items List */}
@@ -842,45 +852,50 @@ const LabelsPage: React.FC = () => {
                   );
 
                   return (
-                    <View
+                    <TouchableOpacity
                       key={`${activeTab}-${
                         activeTab === 'ingredients'
                           ? (item as Ingredient).ingredientName
                           : (item as MenuItem).menuItemName
                       }-${Math.random().toString(36).substr(2, 9)}`}
-                      style={styles.itemCard}>
-                      <View style={styles.itemInfo}>
+                      style={styles.itemCard}
+                      onPress={() =>
+                        !isInQueue && addToPrintQueue(item, activeTab)
+                      }>
+                      <View style={styles.itemMainInfo}>
                         <Text style={styles.itemName}>{name}</Text>
                       </View>
 
-                      <TouchableOpacity
-                        style={[
-                          styles.addButton,
-                          isInQueue && styles.addButtonDisabled,
-                        ]}
-                        onPress={() =>
-                          !isInQueue && addToPrintQueue(item, activeTab)
-                        }
-                        disabled={isInQueue}>
-                        {isInQueue ? (
-                          <>
-                            <CheckCircle size={16} color="#4CAF50" />
-                            <Text
-                              style={[
-                                styles.addButtonText,
-                                styles.addButtonTextDisabled,
-                              ]}>
-                              {queueItem?.quantity || 1} in Queue
-                            </Text>
-                          </>
-                        ) : (
-                          <>
-                            <Plus size={16} color="#fff" />
-                            <Text style={styles.addButtonText}>Add</Text>
-                          </>
-                        )}
-                      </TouchableOpacity>
-                    </View>
+                      <View style={styles.itemActions}>
+                        <TouchableOpacity
+                          style={[
+                            styles.addButton,
+                            isInQueue && styles.addButtonDisabled,
+                          ]}
+                          onPress={() =>
+                            !isInQueue && addToPrintQueue(item, activeTab)
+                          }
+                          disabled={isInQueue}>
+                          {isInQueue ? (
+                            <>
+                              <CheckCircle size={16} color="#4CAF50" />
+                              <Text
+                                style={[
+                                  styles.addButtonText,
+                                  styles.addButtonTextDisabled,
+                                ]}>
+                                {queueItem?.quantity || 1} in Queue
+                              </Text>
+                            </>
+                          ) : (
+                            <>
+                              <Plus size={16} color="#fff" />
+                              <Text style={styles.addButtonText}>Add</Text>
+                            </>
+                          )}
+                        </TouchableOpacity>
+                      </View>
+                    </TouchableOpacity>
                   );
                 })
                 .filter(Boolean)}
@@ -904,12 +919,12 @@ const LabelsPage: React.FC = () => {
                           currentPage === 1 &&
                             styles.paginationButtonTextDisabled,
                         ]}>
-                        &lt;
+                        Previous
                       </Text>
                     </TouchableOpacity>
 
                     <Text style={styles.pageInfo}>
-                      {currentPage} / {totalPages}
+                      Page {currentPage} of {totalPages}
                     </Text>
 
                     <TouchableOpacity
@@ -928,7 +943,7 @@ const LabelsPage: React.FC = () => {
                           currentPage === totalPages &&
                             styles.paginationButtonTextDisabled,
                         ]}>
-                        &gt;
+                        Next
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -1039,13 +1054,13 @@ const LabelsPage: React.FC = () => {
                     <TouchableOpacity
                       style={styles.quantityButton}
                       onPress={() => decrementQuantity(item.uid)}>
-                      <Text style={styles.quantityButtonText}>-</Text>
+                      <Minus size={16} color="#666" />
                     </TouchableOpacity>
                     <Text style={styles.quantityDisplay}>{item.quantity}</Text>
                     <TouchableOpacity
                       style={styles.quantityButton}
                       onPress={() => incrementQuantity(item.uid)}>
-                      <Text style={styles.quantityButtonText}>+</Text>
+                      <Plus size={16} color="#666" />
                     </TouchableOpacity>
                   </View>
 
@@ -1076,7 +1091,7 @@ const LabelsPage: React.FC = () => {
                   <TouchableOpacity
                     style={styles.removeButton}
                     onPress={() => removeFromQueue(item.uid)}>
-                    <Text style={styles.removeButtonText}>Remove</Text>
+                    <X size={16} color="#fff" />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -1169,6 +1184,7 @@ const LabelsPage: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#8A2BE2" />
       {/* Prompt Modal */}
       <Modal
         visible={promptVisible}
@@ -1205,6 +1221,21 @@ const LabelsPage: React.FC = () => {
         </View>
       </Modal>
 
+      {/* Labels Header */}
+      <View style={styles.labelsHeader}>
+        <View style={styles.headerContent}>
+          <View style={styles.headerIconContainer}>
+            <FileText size={32} color="white" />
+          </View>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.labelsTitle}>Labels</Text>
+            <Text style={styles.labelsSubtitle}>
+              Create and print custom labels for ingredients and menu items
+            </Text>
+          </View>
+        </View>
+      </View>
+
       {/* Main Content - Using ScrollView with proper patterns */}
       <ScrollView
         style={styles.mainScrollView}
@@ -1214,64 +1245,30 @@ const LabelsPage: React.FC = () => {
         refreshControl={
           <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
         }>
-        {/* Labels Header */}
-        <View style={styles.labelsHeader}>
-          <View style={styles.labelsHeaderIcon}>
-            <FileText size={32} color="#8A2BE2" />
+        {/* Stats Section */}
+        <View style={styles.statsSection}>
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>
+              {ingredients.length + menuItems.length}
+            </Text>
+            <Text style={styles.statLabel}>Total Items</Text>
           </View>
-          <Text style={styles.labelsTitle}>Labels</Text>
-          <Text style={styles.labelsSubtitle}>
-            Create and print custom labels for ingredients and menu items
-          </Text>
-          <View style={styles.labelsStats}>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>
-                {ingredients.length + menuItems.length}
-              </Text>
-              <Text style={styles.statLabel}>Total Items</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{printQueue.length}</Text>
-              <Text style={styles.statLabel}>In Queue</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Printer
-                size={20}
-                color={connectedDevice ? '#4CAF50' : '#F44336'}
-              />
-              <Text style={styles.statLabel}>
-                {connectedDevice ? 'Ready' : 'No Printer'}
-              </Text>
-            </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>{printQueue.length}</Text>
+            <Text style={styles.statLabel}>In Queue</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Printer
+              size={20}
+              color={connectedDevice ? '#4CAF50' : '#F44336'}
+            />
+            <Text style={styles.statLabel}>
+              {connectedDevice ? 'Ready' : 'No Printer'}
+            </Text>
           </View>
         </View>
-
-        {/* Printer Settings Section */}
-        <View style={styles.settingsSection}>
-          {/* Available Printers */}
-          <View style={styles.printersBox}>
-            {connectedDevice ? (
-              <View style={styles.connectedPrinter}>
-                <Printer size={20} color="#4CAF50" />
-                <Text style={styles.connectedPrinterText}>
-                  Connected: {connectedDevice.name || 'Unknown Device'}
-                </Text>
-                <CheckCircle size={16} color="#4CAF50" />
-              </View>
-            ) : (
-              <View style={styles.noPrinter}>
-                <Printer size={20} color="#666" />
-                <Text style={styles.noPrinterText}>No printer connected</Text>
-              </View>
-            )}
-          </View>
-
-          {/* Initials Section */}
-          {renderInitialsSection()}
-        </View>
-
         {/* Ingredients/Menu Items Section */}
         <View style={styles.itemsSection}>
           {/* Tab Navigation */}
@@ -1307,6 +1304,9 @@ const LabelsPage: React.FC = () => {
           {renderTabContent()}
         </View>
 
+        {/* Initials Section */}
+        {renderInitialsSection()}
+
         {/* Print Queue Section */}
         {renderPrintQueue()}
 
@@ -1334,49 +1334,64 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   mainContent: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 20,
     paddingBottom: 40,
   },
 
   // Labels Header
   labelsHeader: {
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 24,
-    marginBottom: 20,
+    backgroundColor: '#8A2BE2',
+    paddingVertical: 20,
+    paddingHorizontal: 16,
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 4},
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
   },
-  labelsHeaderIcon: {
-    backgroundColor: '#f0f0ff',
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 16,
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  headerIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTextContainer: {
+    flex: 1,
   },
   labelsTitle: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#1a1a1a',
-    marginBottom: 8,
-    textAlign: 'center',
+    color: 'white',
+    marginBottom: 4,
   },
   labelsSubtitle: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 20,
-    lineHeight: 22,
+    fontSize: 14,
+    color: 'white',
+    opacity: 0.9,
+    lineHeight: 18,
   },
-  labelsStats: {
+  // Stats Section
+  statsSection: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    width: '100%',
-    paddingHorizontal: 20,
   },
   statItem: {
     alignItems: 'center',
@@ -1399,51 +1414,23 @@ const styles = StyleSheet.create({
     backgroundColor: '#e0e0e0',
   },
   settingsSection: {
-    backgroundColor: 'white',
-    borderRadius: 12,
+    backgroundColor: '#fff',
+    borderRadius: 16,
     padding: 20,
     marginBottom: 20,
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#1a1a1a',
     marginBottom: 15,
   },
-  printersBox: {
-    backgroundColor: '#f8f9fa',
-    borderWidth: 1,
-    borderColor: '#e9ecef',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 20,
-  },
-  connectedPrinter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  connectedPrinterText: {
-    flex: 1,
-    color: '#4CAF50',
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 8,
-    marginRight: 8,
-  },
-  noPrinter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  noPrinterText: {
-    color: '#6c757d',
-    fontSize: 14,
-    marginLeft: 8,
-  },
+
   initialsSection: {
     marginTop: 10,
   },
@@ -1494,31 +1481,37 @@ const styles = StyleSheet.create({
   },
 
   itemsSection: {
-    backgroundColor: 'white',
-    borderRadius: 12,
+    backgroundColor: '#fff',
+    borderRadius: 16,
     padding: 20,
     marginBottom: 20,
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   tabNavigation: {
     flexDirection: 'row',
     backgroundColor: '#f8f9fa',
-    borderRadius: 8,
+    borderRadius: 12,
     padding: 4,
     marginBottom: 20,
   },
   tab: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     alignItems: 'center',
-    borderRadius: 6,
+    borderRadius: 8,
   },
   activeTab: {
     backgroundColor: '#8A2BE2',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   tabText: {
     fontSize: 14,
@@ -1529,7 +1522,7 @@ const styles = StyleSheet.create({
     color: 'white',
   },
   tabContent: {
-    // Simple container
+    width: '100%',
   },
   loadingContainer: {
     alignItems: 'center',
@@ -1555,52 +1548,46 @@ const styles = StyleSheet.create({
     color: '#adb5bd',
     textAlign: 'center',
   },
+  searchFilterContainer: {
+    marginBottom: 20,
+  },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   searchInput: {
     flex: 1,
-    paddingVertical: 12,
-    paddingLeft: 8,
+    paddingVertical: 0,
+    paddingLeft: 12,
     fontSize: 16,
     color: '#333',
   },
   itemsList: {
+    width: '100%',
     // Remove maxHeight to allow proper expansion
     // maxHeight: 400,
   },
-  itemCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  itemInfo: {
-    flex: 1,
-  },
-  itemName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 4,
-  },
+
   addButton: {
     backgroundColor: '#8A2BE2',
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
+    paddingVertical: 10,
+    borderRadius: 8,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
+    minWidth: 80,
+    minHeight: 44,
   },
   addButtonDisabled: {
     backgroundColor: '#f8f9fa',
@@ -1615,16 +1602,45 @@ const styles = StyleSheet.create({
   addButtonTextDisabled: {
     color: '#4CAF50',
   },
+  itemCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  itemMainInfo: {
+    flex: 1,
+    marginRight: 12,
+  },
+  itemName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    marginBottom: 4,
+  },
+  itemActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   queueSection: {
-    backgroundColor: 'white',
-    borderRadius: 12,
+    backgroundColor: '#fff',
+    borderRadius: 16,
     padding: 20,
     marginBottom: 20,
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   queueHeader: {
     marginBottom: 20,
@@ -1656,11 +1672,12 @@ const styles = StyleSheet.create({
   printLabelsButton: {
     backgroundColor: '#4CAF50',
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderRadius: 8,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    minHeight: 44,
   },
   printLabelsButtonText: {
     color: 'white',
@@ -1670,13 +1687,14 @@ const styles = StyleSheet.create({
   clearQueueButton: {
     backgroundColor: '#fff5f5',
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 8,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#fed7d7',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    minHeight: 40,
   },
   clearQueueText: {
     color: '#F44336',
@@ -1782,11 +1800,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e9ecef',
   },
-  quantityButtonText: {
-    fontSize: 18,
-    color: '#333',
-    fontWeight: 'bold',
-  },
+
   quantityDisplay: {
     fontSize: 16,
     color: '#333',
@@ -1828,26 +1842,20 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   removeButton: {
-    backgroundColor: '#dc3545',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    marginLeft: 10,
+    backgroundColor: '#F44336',
+    borderRadius: 8,
+    padding: 8,
   },
-  removeButtonText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: '600',
-  },
+
   previewSection: {
-    backgroundColor: 'white',
-    borderRadius: 12,
+    backgroundColor: '#fff',
+    borderRadius: 16,
     padding: 20,
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   previewPlaceholder: {
     alignItems: 'center',
@@ -1887,40 +1895,42 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   paginationContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
     marginTop: 20,
-    paddingHorizontal: 10,
+    width: '100%',
   },
   paginationControls: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    padding: 16,
+    width: '100%',
   },
   paginationButton: {
-    paddingHorizontal: 12,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 6,
-    backgroundColor: '#8A2BE2',
+    borderWidth: 1,
+    borderColor: '#e9ecef',
   },
   paginationButtonDisabled: {
-    backgroundColor: '#ccc',
-    opacity: 0.7,
+    backgroundColor: '#f8f9fa',
+    borderColor: '#e9ecef',
   },
   paginationButtonText: {
-    color: 'white',
     fontSize: 14,
     fontWeight: '600',
+    color: '#333',
   },
   paginationButtonTextDisabled: {
     color: '#999',
   },
   pageInfo: {
     fontSize: 14,
-    color: '#333',
-    fontWeight: '600',
-    marginHorizontal: 10,
+    color: '#666',
+    fontWeight: '500',
   },
 
   /* Prompt modal styles */

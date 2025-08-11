@@ -6,6 +6,7 @@ import {
   generateTSCLabelContent,
   LabelType,
   getDefaultExpiryDays,
+  LabelHeight,
 } from '../utils/labelManagement';
 import {getAllergensFromIngredients} from '../utils/allergenDetection';
 import {
@@ -71,6 +72,9 @@ const LabelPreview: React.FC<LabelPreviewProps> = ({
 
   const itemDetails = getItemDetails();
 
+  // Check if this is a PPDS label early so it's available throughout
+  const isPPDSLabel = item.labelType === 'ppds';
+
   // Generate TSC label content with proper positioning
   const labelContent = generateTSCLabelContent(
     itemDetails.name,
@@ -83,9 +87,14 @@ const LabelPreview: React.FC<LabelPreviewProps> = ({
     companyName,
   );
 
-  // Get label height styling - fixed to 40mm
-  const labelHeight = getLabelHeightPixels('40mm');
-  const fontSize = getOptimalFontSize('40mm');
+  // Get label height styling - respect the original label height from the item
+  // Only use 80mm if explicitly set in the item, otherwise use default
+  const labelHeight = getLabelHeightPixels(
+    (item.labelHeight as LabelHeight) || '40mm',
+  );
+  const fontSize = getOptimalFontSize(
+    (item.labelHeight as LabelHeight) || '40mm',
+  );
 
   // Format the expiry date for display
   const formatExpiryDate = (dateString: string) => {
@@ -142,7 +151,14 @@ const LabelPreview: React.FC<LabelPreviewProps> = ({
       {/* Label Preview */}
       <View style={styles.previewSection}>
         <Text style={styles.sectionTitle}>Label Preview</Text>
-        <View style={[styles.labelPreview, {height: labelHeight}]}>
+        <View
+          style={[
+            styles.labelPreview,
+            {
+              height: labelHeight,
+              width: isPPDSLabel ? 56 * 3.78 : 60 * 3.78, // ~212px for PPDS, ~227px for others
+            },
+          ]}>
           {/* Black Header Bar */}
           <View style={styles.headerBar}>
             <Text style={styles.headerText}>{labelContent.header}</Text>
@@ -194,8 +210,8 @@ const LabelPreview: React.FC<LabelPreviewProps> = ({
 
         {/* Label Dimensions Indicator */}
         <Text style={styles.labelHeightIndicator}>
-          Size: 60mm × 40mm • {getLabelTypeDisplayName(item.labelType)} •{' '}
-          {item.labelType}
+          Size: {isPPDSLabel ? '56mm × 80mm' : '60mm × 40mm'} •{' '}
+          {getLabelTypeDisplayName(item.labelType)} • {item.labelType}
         </Text>
       </View>
     </View>
@@ -231,10 +247,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     borderWidth: 1,
     borderColor: '#000000',
-    // Actual label dimensions: 60mm x 40mm
-    // Using 1mm = 3.78px for accurate representation
-    width: 60 * 3.78, // ~227px
-    height: 40 * 3.78, // ~151px
+    // Width and height are set dynamically in inline styles
     alignSelf: 'center',
     overflow: 'hidden', // Ensure content doesn't overflow the border
   },

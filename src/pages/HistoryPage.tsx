@@ -8,6 +8,7 @@ import {
   RefreshControl,
   ActivityIndicator,
   Alert,
+  StatusBar,
 } from 'react-native';
 import {
   History,
@@ -238,12 +239,20 @@ const HistoryPage: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#8A2BE2" />
+      {/* Header */}
       <View style={styles.header}>
-        <Printer size={24} color="#8A2BE2" />
-        <Text style={styles.title}>Print Sessions</Text>
-        <Text style={styles.subtitle}>
-          {logs.length} print session{logs.length !== 1 ? 's' : ''} recorded
-        </Text>
+        <View style={styles.headerContent}>
+          <View style={styles.headerIconContainer}>
+            <History size={32} color="white" />
+          </View>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.headerTitle}>Print Sessions</Text>
+            <Text style={styles.headerSubtitle}>
+              {logs.length} print session{logs.length !== 1 ? 's' : ''} recorded
+            </Text>
+          </View>
+        </View>
       </View>
 
       <FlatList
@@ -265,27 +274,45 @@ const HistoryPage: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f8f9fa',
   },
   header: {
-    padding: 20,
-    paddingBottom: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    backgroundColor: '#8A2BE2',
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  title: {
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  headerIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTextContainer: {
+    flex: 1,
+  },
+  headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
-    marginLeft: 12,
-    marginTop: 8,
+    color: 'white',
+    marginBottom: 4,
   },
-  subtitle: {
+  headerSubtitle: {
     fontSize: 14,
-    color: '#666',
-    marginLeft: 12,
-    marginTop: 4,
+    color: 'white',
+    opacity: 0.9,
+    lineHeight: 18,
   },
   loadingContainer: {
     flex: 1,

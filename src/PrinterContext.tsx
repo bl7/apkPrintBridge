@@ -1,6 +1,10 @@
 import React, {createContext, useContext, useState, ReactNode} from 'react';
 import {NativeModules} from 'react-native';
-import {generate56x31Label, generateComplexLabel} from '../tsplUtils';
+import {
+  generate56x31Label,
+  generateComplexLabel,
+  generatePPDSLabel,
+} from '../tsplUtils';
 
 // Types
 interface BluetoothDevice {
@@ -50,6 +54,14 @@ interface PrinterContextType {
     ingredientsLine?: string;
     initialsLine?: string;
   }) => Promise<void>;
+  printPPDSLabel: (labelData: {
+    productName: string;
+    ingredients: string[];
+    allergens: string[];
+    expiryDate: string;
+    storageInstructions: string;
+    companyName?: string;
+  }) => Promise<void>;
   printTestLabel: () => Promise<void>;
   printESCTest: () => Promise<void>;
 }
@@ -57,10 +69,14 @@ interface PrinterContextType {
 const PrinterContext = createContext<PrinterContextType | undefined>(undefined);
 
 export const usePrinter = () => {
+  console.log('🔧 usePrinter: Called');
   const context = useContext(PrinterContext);
+  console.log('🔧 usePrinter: Context value:', context);
   if (!context) {
+    console.error('🔧 usePrinter: Context is null/undefined');
     throw new Error('usePrinter must be used within a PrinterProvider');
   }
+  console.log('🔧 usePrinter: Returning context successfully');
   return context;
 };
 
@@ -69,6 +85,21 @@ interface PrinterProviderProps {
 }
 
 export const PrinterProvider: React.FC<PrinterProviderProps> = ({children}) => {
+  console.log('🔧 PrinterProvider: Initializing...');
+
+  try {
+    // Check if PrintBridge is available
+    const {PrintBridge} = NativeModules;
+    if (!PrintBridge) {
+      console.error('🔧 PrinterProvider: PrintBridge native module not found');
+      throw new Error('PrintBridge native module not found');
+    }
+    console.log('🔧 PrinterProvider: PrintBridge module found');
+  } catch (error) {
+    console.error('🔧 PrinterProvider: Error checking PrintBridge:', error);
+    // Don't throw here, let the provider continue but log the error
+  }
+
   // State
   const [isBluetoothEnabled, setIsBluetoothEnabled] = useState(false);
   const [devices, setDevices] = useState<BluetoothDevice[]>([]);
@@ -318,6 +349,35 @@ export const PrinterProvider: React.FC<PrinterProviderProps> = ({children}) => {
     }
   };
 
+  // Print PPDS label with 56mm × 80mm dimensions
+  const printPPDSLabel = async (labelData: {
+    productName: string;
+    ingredients: string[];
+    allergens: string[];
+    expiryDate: string;
+    storageInstructions: string;
+    companyName?: string;
+  }) => {
+    if (!connectedDevice) {
+      throw new Error('No device connected');
+    }
+
+    try {
+      setIsPrinting(true);
+
+      // Generate TSPL commands using the PPDS label function
+      const tsplCommands = generatePPDSLabel(labelData);
+
+      const {PrintBridge} = NativeModules;
+      await PrintBridge.printTSPL(tsplCommands);
+    } catch (error) {
+      console.error('Error printing PPDS label:', error);
+      throw error;
+    } finally {
+      setIsPrinting(false);
+    }
+  };
+
   // Test function with different TSPL formats
   const printTestLabel = async () => {
     if (!connectedDevice) {
@@ -408,9 +468,12 @@ export const PrinterProvider: React.FC<PrinterProviderProps> = ({children}) => {
     printHelloWorld,
     printCustomLabel,
     printComplexLabel,
+    printPPDSLabel,
     printTestLabel,
     printESCTest,
   };
+
+  console.log('🔧 PrinterProvider: Providing context with value:', value);
 
   return (
     <PrinterContext.Provider value={value}>{children}</PrinterContext.Provider>

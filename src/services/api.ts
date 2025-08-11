@@ -454,6 +454,52 @@ class ApiService {
     return {use_initials: false, initials: []};
   }
 
+  // Update label settings
+  async updateLabelSettings(
+    userId: string,
+    settings: LabelSetting[],
+  ): Promise<{success: boolean; message: string}> {
+    const response = await this.request<{success: boolean; message: string}>(
+      INSTALABEL_API_ENDPOINTS.LABEL_SETTINGS.PUT,
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          settings: settings,
+        }),
+      },
+      INSTALABEL_ENV.API_BASE_URL,
+    );
+    return response;
+  }
+
+  // Update label initials
+  async updateLabelInitials(
+    userId: string,
+    useInitials: boolean,
+    initials: string[],
+  ): Promise<{success: boolean; message: string}> {
+    const response = await this.request<{success: boolean; message: string}>(
+      INSTALABEL_API_ENDPOINTS.LABEL_INITIALS.PUT,
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          use_initials: useInitials,
+          initials: initials,
+        }),
+      },
+      INSTALABEL_ENV.API_BASE_URL,
+    );
+    return response;
+  }
+
   // Get user profile including company name
   async getProfile(userId: string): Promise<ProfileResponse> {
     try {

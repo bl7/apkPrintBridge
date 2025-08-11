@@ -11,8 +11,18 @@ import {
   Platform,
   StyleSheet,
   ActivityIndicator,
+  TextInput,
 } from 'react-native';
-import {Bluetooth, Bug, Settings, RefreshCw} from 'lucide-react-native';
+import {
+  Bluetooth,
+  Bug,
+  Settings,
+  RefreshCw,
+  Save,
+  Edit3,
+  X,
+  Plus,
+} from 'lucide-react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {usePrinter} from '../PrinterContext';
 import {useAuth} from '../contexts/AuthContext';
@@ -47,6 +57,18 @@ const SettingsPage: React.FC = () => {
   const [useInitials, setUseInitials] = useState(true);
   const [availableInitials, setAvailableInitials] = useState<string[]>(['NG']);
   const [isLoadingInitials, setIsLoadingInitials] = useState(false);
+
+  // Editing states
+  const [isEditingSettings, setIsEditingSettings] = useState(false);
+  const [isEditingInitials, setIsEditingInitials] = useState(false);
+  const [editingSettings, setEditingSettings] = useState<
+    Record<string, number>
+  >({});
+  const [editingInitials, setEditingInitials] = useState<string[]>([]);
+  const [editingUseInitials, setEditingUseInitials] = useState(true);
+  const [newInitial, setNewInitial] = useState('');
+  const [isUpdatingSettings, setIsUpdatingSettings] = useState(false);
+  const [isUpdatingInitials, setIsUpdatingInitials] = useState(false);
 
   // Load label settings from InstaLabel.co API
   const loadLabelSettings = useCallback(async () => {
@@ -126,6 +148,129 @@ const SettingsPage: React.FC = () => {
       setIsLoadingInitials(false);
     }
   }, [isAuthenticated]);
+
+  // Update label settings
+  const updateLabelSettings = useCallback(async () => {
+    if (!isAuthenticated || !editingSettings) return;
+
+    const {user} = useAuth();
+    if (!user?.id) {
+      Alert.alert('Error', 'User ID not found');
+      return;
+    }
+
+    setIsUpdatingSettings(true);
+    try {
+      const settingsArray = Object.entries(editingSettings).map(
+        ([labelType, expiryDays]) => ({
+          label_type: labelType,
+          expiry_days: expiryDays,
+        }),
+      );
+
+      const response = await apiService.updateLabelSettings(
+        user.id,
+        settingsArray,
+      );
+
+      if (response.success) {
+        setLabelSettings(editingSettings);
+        setIsEditingSettings(false);
+        Alert.alert('Success', 'Label settings updated successfully');
+      } else {
+        Alert.alert(
+          'Error',
+          response.message || 'Failed to update label settings',
+        );
+      }
+    } catch (error) {
+      console.error('Error updating label settings:', error);
+      Alert.alert('Error', 'Failed to update label settings');
+    } finally {
+      setIsUpdatingSettings(false);
+    }
+  }, [isAuthenticated, editingSettings]);
+
+  // Update label initials
+  const updateLabelInitials = useCallback(async () => {
+    if (!isAuthenticated) return;
+
+    const {user} = useAuth();
+    if (!user?.id) {
+      Alert.alert('Error', 'User ID not found');
+      return;
+    }
+
+    setIsUpdatingInitials(true);
+    try {
+      const response = await apiService.updateLabelInitials(
+        user.id,
+        editingUseInitials,
+        editingInitials,
+      );
+
+      if (response.success) {
+        setUseInitials(editingUseInitials);
+        setAvailableInitials(editingInitials);
+        setIsEditingInitials(false);
+        Alert.alert('Success', 'Label initials updated successfully');
+      } else {
+        Alert.alert(
+          'Error',
+          response.message || 'Failed to update label initials',
+        );
+      }
+    } catch (error) {
+      console.error('Error updating label initials:', error);
+      Alert.alert('Error', 'Failed to update label initials');
+    } finally {
+      setIsUpdatingInitials(false);
+    }
+  }, [isAuthenticated, editingUseInitials, editingInitials]);
+
+  // Helper functions for editing
+  const startEditingSettings = useCallback(() => {
+    setEditingSettings({...labelSettings});
+    setIsEditingSettings(true);
+  }, [labelSettings]);
+
+  const cancelEditingSettings = useCallback(() => {
+    setIsEditingSettings(false);
+    setEditingSettings({});
+  }, []);
+
+  const startEditingInitials = useCallback(() => {
+    setEditingInitials([...availableInitials]);
+    setEditingUseInitials(useInitials);
+    setIsEditingInitials(true);
+  }, [availableInitials, useInitials]);
+
+  const cancelEditingInitials = useCallback(() => {
+    setIsEditingInitials(false);
+    setEditingInitials([]);
+    setEditingUseInitials(true);
+  }, []);
+
+  const addInitial = useCallback(() => {
+    if (
+      newInitial.trim() &&
+      !editingInitials.includes(newInitial.trim().toUpperCase())
+    ) {
+      setEditingInitials([...editingInitials, newInitial.trim().toUpperCase()]);
+      setNewInitial('');
+    }
+  }, [newInitial, editingInitials]);
+
+  const removeInitial = useCallback(
+    (index: number) => {
+      setEditingInitials(editingInitials.filter((_, i) => i !== index));
+    },
+    [editingInitials],
+  );
+
+  const toggleUseInitials = useCallback(() => {
+    setEditingUseInitials(!editingUseInitials);
+  }, [editingUseInitials]);
 
   // Request necessary permissions for Android 12+
   const requestPermissions = async () => {
@@ -217,12 +362,21 @@ const SettingsPage: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#1976D2" />
+      <StatusBar barStyle="light-content" backgroundColor="#8A2BE2" />
 
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Settings</Text>
-        <Text style={styles.headerSubtitle}>Manage Bluetooth Devices</Text>
+        <View style={styles.headerContent}>
+          <View style={styles.headerIconContainer}>
+            <Settings size={32} color="white" />
+          </View>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.headerTitle}>Settings</Text>
+            <Text style={styles.headerSubtitle}>
+              Manage app preferences and devices
+            </Text>
+          </View>
+        </View>
       </View>
 
       <ScrollView style={styles.content}>
@@ -385,23 +539,73 @@ const SettingsPage: React.FC = () => {
 
         {/* Label Settings Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            Label Settings (Instalabel.co)
-          </Text>
-          <LabelSettingsDisplay />
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Label Settings</Text>
+            {!isEditingSettings && (
+              <TouchableOpacity
+                style={styles.editButton}
+                onPress={startEditingSettings}>
+                <Edit3 size={16} color="white" />
+                <Text style={styles.editButtonText}>Edit</Text>
+              </TouchableOpacity>
+            )}
+          </View>
 
           {/* Show current label settings from API */}
           {!isLoadingLabelSettings && Object.keys(labelSettings).length > 0 && (
             <View style={styles.currentLabelSettings}>
-              <Text style={styles.currentSettingsTitle}>
-                Current API Settings:
-              </Text>
               {Object.entries(labelSettings).map(([labelType, expiryDays]) => (
                 <View key={labelType} style={styles.settingRow}>
                   <Text style={styles.settingLabel}>{labelType}:</Text>
                   <Text style={styles.settingValue}>{expiryDays} days</Text>
                 </View>
               ))}
+            </View>
+          )}
+
+          {/* Editing Interface for Label Settings */}
+          {isEditingSettings && (
+            <View style={styles.editingContainer}>
+              <Text style={styles.currentSettingsTitle}>
+                Edit Label Settings:
+              </Text>
+              {Object.entries(editingSettings).map(
+                ([labelType, expiryDays]) => (
+                  <View key={labelType} style={styles.editingRow}>
+                    <Text style={styles.settingLabel}>{labelType}:</Text>
+                    <TextInput
+                      style={styles.editingInput}
+                      value={expiryDays.toString()}
+                      onChangeText={(text: string) => {
+                        const numValue = parseInt(text) || 0;
+                        setEditingSettings({
+                          ...editingSettings,
+                          [labelType]: numValue,
+                        });
+                      }}
+                      keyboardType="numeric"
+                      placeholder="Days"
+                    />
+                  </View>
+                ),
+              )}
+              <View style={styles.actionButtons}>
+                <TouchableOpacity
+                  style={styles.saveButton}
+                  onPress={updateLabelSettings}
+                  disabled={isUpdatingSettings}>
+                  <Save size={16} color="white" />
+                  <Text style={styles.saveButtonText}>
+                    {isUpdatingSettings ? 'Saving...' : 'Save'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={cancelEditingSettings}>
+                  <X size={16} color="white" />
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           )}
 
@@ -414,15 +618,47 @@ const SettingsPage: React.FC = () => {
             </View>
           )}
 
-          {/* Show initials status */}
+          {/* Refresh Button */}
+          <TouchableOpacity
+            style={styles.refreshButton}
+            onPress={loadLabelSettings}
+            disabled={isLoadingLabelSettings}>
+            <RefreshCw
+              size={16}
+              color="#8A2BE2"
+              style={[
+                styles.refreshIcon,
+                isLoadingLabelSettings && styles.rotatingIcon,
+              ]}
+            />
+            <Text style={styles.refreshButtonText}>
+              {isLoadingLabelSettings ? 'Loading...' : 'Refresh Settings'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Label Initials Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Label Initials</Text>
+            {!isEditingInitials && (
+              <TouchableOpacity
+                style={styles.editButton}
+                onPress={startEditingInitials}>
+                <Edit3 size={16} color="white" />
+                <Text style={styles.editButtonText}>Edit</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Show current initials status */}
           {!isLoadingInitials && (
-            <View style={styles.initialsStatus}>
-              <Text style={styles.initialsStatusTitle}>Initials Status:</Text>
+            <View style={styles.currentLabelSettings}>
               <View style={styles.initialsStatusRow}>
-                <Text style={styles.initialsStatusLabel}>Enabled:</Text>
+                <Text style={styles.settingLabel}>Enabled:</Text>
                 <Text
                   style={[
-                    styles.initialsStatusValue,
+                    styles.settingValue,
                     {color: useInitials ? '#4CAF50' : '#F44336'},
                   ]}>
                   {useInitials ? 'Yes' : 'No'}
@@ -430,8 +666,8 @@ const SettingsPage: React.FC = () => {
               </View>
               {useInitials && availableInitials.length > 0 && (
                 <View style={styles.initialsStatusRow}>
-                  <Text style={styles.initialsStatusLabel}>Available:</Text>
-                  <Text style={styles.initialsStatusValue}>
+                  <Text style={styles.settingLabel}>Available:</Text>
+                  <Text style={styles.settingValue}>
                     {availableInitials.join(', ')}
                   </Text>
                 </View>
@@ -439,42 +675,115 @@ const SettingsPage: React.FC = () => {
             </View>
           )}
 
-          {/* Refresh Buttons */}
-          <View style={styles.refreshButtons}>
-            <TouchableOpacity
-              style={styles.refreshButton}
-              onPress={loadLabelSettings}
-              disabled={isLoadingLabelSettings}>
-              <RefreshCw
-                size={16}
-                color="#8A2BE2"
-                style={[
-                  styles.refreshIcon,
-                  isLoadingLabelSettings && styles.rotatingIcon,
-                ]}
-              />
-              <Text style={styles.refreshButtonText}>
-                {isLoadingLabelSettings ? 'Loading...' : 'Refresh Settings'}
+          {/* Editing Interface for Initials */}
+          {isEditingInitials && (
+            <View style={styles.editingContainer}>
+              <Text style={styles.currentSettingsTitle}>
+                Edit Initials Settings:
               </Text>
-            </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.refreshButton}
-              onPress={loadLabelInitials}
-              disabled={isLoadingInitials}>
-              <RefreshCw
-                size={16}
-                color="#8A2BE2"
-                style={[
-                  styles.refreshIcon,
-                  isLoadingInitials && styles.rotatingIcon,
-                ]}
-              />
-              <Text style={styles.refreshButtonText}>
-                {isLoadingInitials ? 'Loading...' : 'Refresh Initials'}
+              {/* Toggle for use initials */}
+              <View style={styles.toggleContainer}>
+                <Text style={styles.settingLabel}>Use Initials:</Text>
+                <TouchableOpacity
+                  style={[
+                    styles.toggleButton,
+                    !editingUseInitials && styles.toggleButtonInactive,
+                  ]}
+                  onPress={toggleUseInitials}>
+                  <Text
+                    style={[
+                      styles.toggleButtonText,
+                      !editingUseInitials && styles.toggleButtonTextInactive,
+                    ]}>
+                    {editingUseInitials ? 'ON' : 'OFF'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Initials list */}
+              {editingUseInitials && (
+                <>
+                  <Text style={styles.settingLabel}>Available Initials:</Text>
+                  <View style={styles.initialsContainer}>
+                    {editingInitials.map((initial, index) => (
+                      <View key={index} style={styles.initialTag}>
+                        <Text style={styles.initialTagText}>{initial}</Text>
+                        <TouchableOpacity
+                          style={styles.removeInitialButton}
+                          onPress={() => removeInitial(index)}>
+                          <X size={12} color="white" />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </View>
+
+                  {/* Add new initial */}
+                  <View style={styles.addInitialContainer}>
+                    <TextInput
+                      style={styles.addInitialInput}
+                      value={newInitial}
+                      onChangeText={setNewInitial}
+                      placeholder="Enter initials (e.g., AB)"
+                      maxLength={4}
+                    />
+                    <TouchableOpacity
+                      style={styles.addInitialButton}
+                      onPress={addInitial}>
+                      <Plus size={16} color="white" />
+                      <Text style={styles.addInitialButtonText}>Add</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
+
+              {/* Action buttons */}
+              <View style={styles.actionButtons}>
+                <TouchableOpacity
+                  style={styles.saveButton}
+                  onPress={updateLabelInitials}
+                  disabled={isUpdatingInitials}>
+                  <Save size={16} color="white" />
+                  <Text style={styles.saveButtonText}>
+                    {isUpdatingInitials ? 'Saving...' : 'Save'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={cancelEditingInitials}>
+                  <X size={16} color="white" />
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          {isLoadingInitials && (
+            <View style={styles.loadingSettings}>
+              <ActivityIndicator size="small" color="#8A2BE2" />
+              <Text style={styles.loadingSettingsText}>
+                Loading initials...
               </Text>
-            </TouchableOpacity>
-          </View>
+            </View>
+          )}
+
+          {/* Refresh Button */}
+          <TouchableOpacity
+            style={styles.refreshButton}
+            onPress={loadLabelInitials}
+            disabled={isLoadingInitials}>
+            <RefreshCw
+              size={16}
+              color="#8A2BE2"
+              style={[
+                styles.refreshIcon,
+                isLoadingInitials && styles.rotatingIcon,
+              ]}
+            />
+            <Text style={styles.refreshButtonText}>
+              {isLoadingInitials ? 'Loading...' : 'Refresh Initials'}
+            </Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -484,38 +793,61 @@ const SettingsPage: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f8f9fa',
   },
   header: {
-    backgroundColor: '#1976D2',
-    padding: 20,
+    backgroundColor: '#8A2BE2',
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  headerContent: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 16,
+  },
+  headerIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTextContainer: {
+    flex: 1,
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
     color: 'white',
+    marginBottom: 4,
   },
   headerSubtitle: {
-    fontSize: 16,
+    fontSize: 14,
     color: 'white',
-    opacity: 0.8,
-    marginTop: 5,
+    opacity: 0.9,
+    lineHeight: 18,
   },
   content: {
     flex: 1,
-    padding: 20,
+    paddingHorizontal: 16,
+    paddingTop: 20,
   },
   section: {
-    backgroundColor: 'white',
-    borderRadius: 10,
+    backgroundColor: '#fff',
+    borderRadius: 16,
     padding: 20,
     marginBottom: 20,
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -524,9 +856,9 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#1a1a1a',
     marginBottom: 15,
   },
   statusContainer: {
@@ -540,14 +872,15 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   button: {
-    backgroundColor: '#1976D2',
-    paddingHorizontal: 20,
+    backgroundColor: '#8A2BE2',
+    paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 8,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
+    minHeight: 44,
   },
   statusText: {
     fontSize: 16,
@@ -560,12 +893,13 @@ const styles = StyleSheet.create({
   },
   scanButton: {
     backgroundColor: '#4CAF50',
-    paddingHorizontal: 15,
+    paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 6,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
+    minHeight: 36,
   },
   scanButtonText: {
     color: 'white',
@@ -582,9 +916,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 15,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
+    borderRadius: 8,
+    marginBottom: 4,
   },
   deviceInfo: {
     flex: 1,
@@ -606,27 +943,31 @@ const styles = StyleSheet.create({
   },
   connectButton: {
     backgroundColor: '#4CAF50',
-    paddingHorizontal: 15,
+    paddingHorizontal: 12,
     paddingVertical: 8,
+    minHeight: 36,
   },
   disconnectButton: {
     backgroundColor: '#F44336',
-    paddingHorizontal: 15,
+    paddingHorizontal: 12,
     paddingVertical: 8,
+    minHeight: 36,
   },
   debugButton: {
     backgroundColor: '#9C27B0',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    marginTop: 15,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    marginTop: 16,
     alignSelf: 'center',
+    minHeight: 44,
   },
   connectedDeviceInfo: {
     backgroundColor: '#E8F5E8',
-    padding: 15,
-    borderRadius: 8,
+    padding: 16,
+    borderRadius: 10,
     borderLeftWidth: 4,
     borderLeftColor: '#4CAF50',
+    marginTop: 8,
   },
   connectedDeviceName: {
     fontSize: 16,
@@ -758,13 +1099,16 @@ const styles = StyleSheet.create({
     marginTop: 15,
   },
   refreshButton: {
-    backgroundColor: '#E0E0E0',
-    paddingHorizontal: 15,
+    backgroundColor: '#F5F5F5',
+    paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 8,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    minHeight: 40,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
   },
   refreshButtonText: {
     fontSize: 14,
@@ -777,6 +1121,156 @@ const styles = StyleSheet.create({
   rotatingIcon: {
     // This style is applied when the icon is rotating
     // It's not directly in the styles object, but can be added via a class or inline
+  },
+  // New styles for editing functionality
+  editButton: {
+    backgroundColor: '#8A2BE2',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    minHeight: 36,
+  },
+  editButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  saveButton: {
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  saveButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  cancelButton: {
+    backgroundColor: '#F44336',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  cancelButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  editingContainer: {
+    backgroundColor: '#F8F9FA',
+    padding: 15,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+    marginTop: 10,
+  },
+  editingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  editingInput: {
+    borderWidth: 1,
+    borderColor: '#DEE2E6',
+    borderRadius: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 14,
+    backgroundColor: 'white',
+    minWidth: 80,
+  },
+  initialsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 10,
+  },
+  initialTag: {
+    backgroundColor: '#8A2BE2',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  initialTagText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  removeInitialButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 10,
+    padding: 2,
+  },
+  addInitialContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 10,
+  },
+  addInitialInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#DEE2E6',
+    borderRadius: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 14,
+    backgroundColor: 'white',
+  },
+  addInitialButton: {
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  addInitialButtonText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  toggleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 15,
+  },
+  toggleButton: {
+    backgroundColor: '#8A2BE2',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  toggleButtonInactive: {
+    backgroundColor: '#E0E0E0',
+  },
+  toggleButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  toggleButtonTextInactive: {
+    color: '#666',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 15,
   },
 });
 

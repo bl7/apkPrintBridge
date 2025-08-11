@@ -187,14 +187,21 @@ const PrintPage: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#1976D2" />
+      <StatusBar barStyle="light-content" backgroundColor="#8A2BE2" />
 
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Print</Text>
-        <Text style={styles.headerSubtitle}>
-          Print 56x31mm Labels and Documents
-        </Text>
+        <View style={styles.headerContent}>
+          <View style={styles.headerIconContainer}>
+            <Printer size={32} color="white" />
+          </View>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.headerTitle}>Print</Text>
+            <Text style={styles.headerSubtitle}>
+              Print 56x31mm Labels and Documents
+            </Text>
+          </View>
+        </View>
       </View>
 
       <ScrollView style={styles.content}>
@@ -408,43 +415,66 @@ const PrintPage: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f8f9fa',
   },
   header: {
-    backgroundColor: '#1976D2',
-    padding: 20,
+    backgroundColor: '#8A2BE2',
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  headerContent: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 16,
+  },
+  headerIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTextContainer: {
+    flex: 1,
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
     color: 'white',
+    marginBottom: 4,
   },
   headerSubtitle: {
-    fontSize: 16,
+    fontSize: 14,
     color: 'white',
-    opacity: 0.8,
-    marginTop: 5,
+    opacity: 0.9,
+    lineHeight: 18,
   },
   content: {
     flex: 1,
-    padding: 20,
+    paddingHorizontal: 16,
+    paddingTop: 20,
   },
   section: {
-    backgroundColor: 'white',
-    borderRadius: 10,
+    backgroundColor: '#fff',
+    borderRadius: 16,
     padding: 20,
     marginBottom: 20,
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#1a1a1a',
     marginBottom: 15,
   },
   statusContainer: {

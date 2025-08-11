@@ -6,13 +6,7 @@ import {
   StyleSheet,
   SafeAreaView,
 } from 'react-native';
-import {
-  Bluetooth,
-  Printer,
-  History,
-  Settings,
-  FileText,
-} from 'lucide-react-native';
+import {Cog, Printer, History, Settings, FileText} from 'lucide-react-native';
 
 // Import pages
 import SettingsPage from '../pages/SettingsPage';
@@ -67,11 +61,11 @@ const CustomTabNavigator: React.FC = () => {
       <View style={styles.content}>{renderTabContent()}</View>
 
       <View style={styles.tabBar}>
-        {renderTab('Settings', Bluetooth, 'Settings')}
+        {renderTab('Settings', Cog, 'Settings')}
         {renderTab('Print', Printer, 'Print')}
         {renderTab('Logs', History, 'Print Sessions')}
-        {renderTab('PPDS', Settings, 'PPDS')}
-        {renderTab('Labels', FileText, 'Labels')}
+        {renderTab('PPDS', Printer, 'PPDS')}
+        {renderTab('Labels', Printer, 'Labels')}
       </View>
     </SafeAreaView>
   );

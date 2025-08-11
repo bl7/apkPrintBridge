@@ -11,6 +11,7 @@ import {
   RefreshControl,
   ActivityIndicator,
   Platform,
+  StatusBar,
 } from 'react-native';
 
 import Modal from 'react-native-modal';
@@ -67,7 +68,7 @@ const renderAllergenIcon = (allergen: string, size: number = 12) => {
 
 const PPDSPage: React.FC = () => {
   const {isAuthenticated, user} = useAuth();
-  const {connectedDevice, isPrinting, printComplexLabel, setIsPrinting} =
+  const {connectedDevice, isPrinting, printPPDSLabel, setIsPrinting} =
     usePrinter();
 
   // Core data state
@@ -84,6 +85,9 @@ const PPDSPage: React.FC = () => {
 
   // Print settings
   const [customExpiry, setCustomExpiry] = useState<Record<string, string>>({});
+  const [storageInstructions, setStorageInstructions] = useState<string>(
+    'Keep refrigerated at 5°C',
+  );
 
   // Label settings from InstaLabel.co API
   const [labelSettings, setLabelSettings] = useState<Record<string, number>>(
@@ -226,6 +230,39 @@ const PPDSPage: React.FC = () => {
         expiryDays,
       );
 
+      // Extract allergens from ingredients - PPDS page specific method
+      const allAllergens: string[] = [];
+      if (item.ingredients) {
+        console.log('🔍 PPDS - Menu item ingredients:', item.ingredients);
+        console.log(
+          '🔍 PPDS - Available ingredients:',
+          ingredients.map(i => ({id: i.ingredientID, name: i.ingredientName})),
+        );
+
+        item.ingredients.forEach(ingredientRef => {
+          console.log(
+            '🔍 PPDS - Looking for ingredient with uuid:',
+            ingredientRef.uuid,
+          );
+          const fullIngredient = ingredients.find(
+            i => i.ingredientID === ingredientRef.uuid,
+          );
+          console.log('🔍 PPDS - Found ingredient:', fullIngredient);
+
+          if (fullIngredient && fullIngredient.allergens) {
+            console.log(
+              '🔍 PPDS - Ingredient allergens:',
+              fullIngredient.allergens,
+            );
+            fullIngredient.allergens.forEach(allergen => {
+              allAllergens.push(allergen.allergenName);
+            });
+          }
+        });
+      }
+
+      console.log('🔍 PPDS - Final allergens array:', allAllergens);
+
       const newQueueItem: PrintQueueItem = {
         uid: item.menuItemID,
         name: item.menuItemName,
@@ -233,9 +270,9 @@ const PPDSPage: React.FC = () => {
         quantity: 1,
         labelType: defaultLabelType,
         expiryDate,
-        allergens: [],
+        allergens: [...new Set(allAllergens)], // Remove duplicates
         ingredients: item.ingredients?.map(i => i.ingredientName) || [],
-        labelHeight: '40mm',
+        labelHeight: '80mm', // PPDS labels are 80mm height
       };
 
       setPrintQueue(prev => [...prev, newQueueItem]);
@@ -339,15 +376,6 @@ const PPDSPage: React.FC = () => {
       for (const item of printQueue) {
         const quantity = item.quantity;
 
-        // Generate the full label content using the same logic as the preview
-        let labelContentObj: {
-          header: string;
-          expiryLine: string;
-          printedLine: string;
-          ingredientsLine?: string;
-          initialsLine?: string;
-        };
-
         // For PPDS page, we only handle menu items
         if (item.type === 'menu') {
           const defaultLabelType = 'ppds'; // Always PPDS for this page
@@ -363,50 +391,55 @@ const PPDSPage: React.FC = () => {
             })
             .filter((ing): ing is Ingredient => ing !== undefined);
 
-          labelContentObj = generateTSCLabelContent(
-            item.name,
-            item.labelType,
-            expiryDate,
-            ingredientObjects, // Pass full ingredient objects
-            item.allergens || [],
-            undefined, // printedDate will be generated inside
-            undefined, // No initials for PPDS
-            companyName, // Pass company name for PPDS labels
+          // Extract ingredient names and allergens for PPDS format
+          const ingredientNames = ingredientObjects.map(
+            ing => ing.ingredientName,
           );
-        } else {
-          // This shouldn't happen on PPDS page, but handle gracefully
-          labelContentObj = {
-            header: item.name,
-            expiryLine: '',
-            printedLine: '',
+          const allAllergens: string[] = [];
+          ingredientObjects.forEach(ingredient => {
+            if (ingredient.allergens) {
+              ingredient.allergens.forEach(allergen => {
+                allAllergens.push(allergen.allergenName);
+              });
+            }
+          });
+
+          // Create PPDS label data
+          const ppdsLabelData = {
+            productName: item.name,
+            ingredients: ingredientNames,
+            allergens: [...new Set(allAllergens)], // Remove duplicates
+            expiryDate: expiryDate,
+            storageInstructions: storageInstructions,
+            companyName: companyName,
           };
-        }
 
-        // Print the specified quantity for this item
-        for (let i = 0; i < quantity; i++) {
-          await printComplexLabel(labelContentObj);
+          // Print the specified quantity for this item
+          for (let i = 0; i < quantity; i++) {
+            await printPPDSLabel(ppdsLabelData);
 
-          // Log the print action
-          try {
-            await apiService.logPrintAction({
-              labelType: item.labelType,
-              itemId: item.uid,
-              itemName: item.name,
-              quantity: 1, // Log each individual print
-              expiryDate: customExpiry[item.uid] || item.expiryDate,
-              initial: undefined, // No initials for PPDS
-              labelHeight: item.labelHeight,
-              printerUsed: connectedDevice?.name || 'Unknown Printer',
-              sessionId: `print_${Date.now()}`, // Generate unique session ID
-            });
-          } catch (logError) {
-            console.warn('Failed to log print action:', logError);
-            // Continue printing even if logging fails
-          }
+            // Log the print action
+            try {
+              await apiService.logPrintAction({
+                labelType: item.labelType,
+                itemId: item.uid,
+                itemName: item.name,
+                quantity: 1, // Log each individual print
+                expiryDate: customExpiry[item.uid] || item.expiryDate,
+                initial: undefined, // No initials for PPDS
+                labelHeight: item.labelHeight,
+                printerUsed: connectedDevice?.name || 'Unknown Printer',
+                sessionId: `print_${Date.now()}`, // Generate unique session ID
+              });
+            } catch (logError) {
+              console.warn('Failed to log print action:', logError);
+              // Continue printing even if logging fails
+            }
 
-          // Small delay between prints to prevent buffer overflow
-          if (i < quantity - 1) {
-            await new Promise(resolve => setTimeout(resolve, 500));
+            // Small delay between prints to prevent buffer overflow
+            if (i < quantity - 1) {
+              await new Promise(resolve => setTimeout(resolve, 500));
+            }
           }
         }
       }
@@ -417,6 +450,7 @@ const PPDSPage: React.FC = () => {
       );
       setPrintQueue([]);
       setCustomExpiry({});
+      setStorageInstructions('Keep refrigerated at 5°C');
     } catch (error) {
       console.error('Printing error:', error);
       Alert.alert('Error', 'Failed to print labels. Please try again.');
@@ -656,17 +690,15 @@ const PPDSPage: React.FC = () => {
                   {item.labelType.toUpperCase()} • {item.labelHeight}
                 </Text>
 
-                {/* Ingredients in queue */}
-                {item.ingredients && item.ingredients.length > 0 && (
-                  <View style={styles.queueIngredients}>
-                    <Text style={styles.queueIngredientsLabel}>
-                      Ingredients:
-                    </Text>
-                    <View style={styles.queueIngredientsList}>
-                      {item.ingredients.slice(0, 3).map((ingredient, index) => (
-                        <View key={index} style={styles.queueIngredientTag}>
-                          <Text style={styles.queueIngredientText}>
-                            {ingredient}
+                {/* Allergens in queue */}
+                {item.allergens && item.allergens.length > 0 && (
+                  <View style={styles.queueAllergens}>
+                    <Text style={styles.queueAllergensLabel}>Allergens:</Text>
+                    <View style={styles.queueAllergensList}>
+                      {item.allergens.map((allergen, index) => (
+                        <View key={index} style={styles.queueAllergenTag}>
+                          <Text style={styles.queueAllergenText}>
+                            {allergen}
                           </Text>
                         </View>
                       ))}
@@ -705,7 +737,7 @@ const PPDSPage: React.FC = () => {
     </View>
   );
 
-  // Enhanced label preview
+  // Enhanced PPDS label preview
   const renderLabelPreview = () => {
     if (printQueue.length === 0) {
       return (
@@ -718,19 +750,89 @@ const PPDSPage: React.FC = () => {
       );
     }
 
+    // Debug: Log allergens data
+    console.log(
+      'PPDS Preview - Print Queue Items:',
+      printQueue.map(item => ({
+        name: item.name,
+        allergens: item.allergens,
+        ingredients: item.ingredients,
+      })),
+    );
+
     return (
       <View style={styles.previewScroll}>
         {printQueue.map(item => (
           <View key={item.uid} style={styles.previewContainer}>
-            <LabelPreview
-              item={item}
-              ingredients={ingredients}
-              menuItems={menuItems}
-              initials="" // No initials for PPDS
-              onUpdateLabelType={updateLabelType}
-              labelSettings={labelSettings}
-              companyName={companyName}
-            />
+            {/* Custom PPDS Label Preview */}
+            <View style={styles.ppdsPreviewContainer}>
+              {/* Product Name */}
+              <Text style={styles.ppdsPreviewProductName}>{item.name}</Text>
+
+              {/* Ingredients directly below name */}
+              {item.ingredients && item.ingredients.length > 0 && (
+                <View style={styles.ppdsPreviewIngredients}>
+                  <Text style={styles.ppdsPreviewIngredientsLine}>
+                    <Text style={styles.ppdsPreviewSectionTitle}>
+                      Ingredients:{' '}
+                    </Text>
+                    <Text style={styles.ppdsPreviewIngredientsText}>
+                      {item.ingredients
+                        .map(ingredient => {
+                          const allergen = item.allergens?.find(allergen =>
+                            ingredient
+                              .toLowerCase()
+                              .includes(allergen.toLowerCase()),
+                          );
+                          if (allergen) {
+                            return `${ingredient}(${allergen.toUpperCase()})`;
+                          }
+                          return ingredient;
+                        })
+                        .join(', ')}
+                    </Text>
+                  </Text>
+                </View>
+              )}
+
+              {/* Allergen Warning Box - only show if allergens exist */}
+              {item.allergens && item.allergens.length > 0 && (
+                <View style={styles.ppdsPreviewAllergenBox}>
+                  <Text style={styles.ppdsPreviewAllergenText}>
+                    Contains:{' '}
+                    {item.allergens.map(a => a.toUpperCase()).join(', ')}
+                  </Text>
+                </View>
+              )}
+
+              {/* Dates directly below ingredients/allergens */}
+              <View style={styles.ppdsPreviewDates}>
+                <Text style={styles.ppdsPreviewDateText}>
+                  Packed: {new Date().toISOString().split('T')[0]}
+                </Text>
+                <Text style={styles.ppdsPreviewDateText}>
+                  Use By: {customExpiry[item.uid] || item.expiryDate || 'N/A'}
+                </Text>
+              </View>
+
+              {/* Bottom section - Storage and Company info */}
+              <View style={styles.ppdsPreviewBottomSection}>
+                {/* Storage Instructions */}
+                <Text style={styles.ppdsPreviewStorageText}>
+                  {storageInstructions}
+                </Text>
+
+                {/* Company Info */}
+                <View style={styles.ppdsPreviewCompany}>
+                  <Text style={styles.ppdsPreviewCompanyText}>
+                    Prepared by: {companyName}
+                  </Text>
+                  <Text style={styles.ppdsPreviewWebsiteText}>
+                    www.instalabel.co
+                  </Text>
+                </View>
+              </View>
+            </View>
           </View>
         ))}
       </View>
@@ -753,6 +855,7 @@ const PPDSPage: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#8A2BE2" />
       {/* Prompt Modal */}
       <Modal
         visible={promptVisible}
@@ -789,6 +892,21 @@ const PPDSPage: React.FC = () => {
         </View>
       </Modal>
 
+      {/* Enhanced PPDS Header */}
+      <View style={styles.ppdsHeader}>
+        <View style={styles.headerContent}>
+          <View style={styles.headerIconContainer}>
+            <FileText size={32} color="white" />
+          </View>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.ppdsTitle}>PPDS Labels</Text>
+            <Text style={styles.ppdsSubtitle}>
+              Pre-Packaged for Direct Sale - UK Food Compliance
+            </Text>
+          </View>
+        </View>
+      </View>
+
       {/* Main Content */}
       <ScrollView
         style={styles.mainScrollView}
@@ -798,40 +916,44 @@ const PPDSPage: React.FC = () => {
         refreshControl={
           <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
         }>
-        {/* Enhanced PPDS Header */}
-        <View style={styles.ppdsHeader}>
-          <View style={styles.ppdsHeaderIcon}>
-            <FileText size={32} color="#8A2BE2" />
+        {/* Stats Section */}
+        <View style={styles.statsSection}>
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>{menuItems.length}</Text>
+            <Text style={styles.statLabel}>Menu Items</Text>
           </View>
-          <Text style={styles.ppdsTitle}>PPDS Labels</Text>
-          <Text style={styles.ppdsSubtitle}>
-            Pre-Packaged for Direct Sale - UK Food Compliance
-          </Text>
-          <View style={styles.ppdsStats}>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{menuItems.length}</Text>
-              <Text style={styles.statLabel}>Menu Items</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{printQueue.length}</Text>
-              <Text style={styles.statLabel}>In Queue</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Printer
-                size={20}
-                color={connectedDevice ? '#4CAF50' : '#F44336'}
-              />
-              <Text style={styles.statLabel}>
-                {connectedDevice ? 'Ready' : 'No Printer'}
-              </Text>
-            </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>{printQueue.length}</Text>
+            <Text style={styles.statLabel}>In Queue</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Printer
+              size={20}
+              color={connectedDevice ? '#4CAF50' : '#F44336'}
+            />
+            <Text style={styles.statLabel}>
+              {connectedDevice ? 'Ready' : 'No Printer'}
+            </Text>
           </View>
         </View>
-
         {/* Menu Items Tab Content */}
         {renderTabContent()}
+
+        {/* Global Storage Instructions */}
+        <View style={styles.globalStorageContainer}>
+          <Text style={styles.globalStorageLabel}>
+            Storage Instructions (applies to all labels):
+          </Text>
+          <TextInput
+            style={styles.globalStorageInput}
+            placeholder="e.g., Keep refrigerated at 5°C"
+            value={storageInstructions}
+            onChangeText={(text: string) => setStorageInstructions(text)}
+            placeholderTextColor="#999"
+          />
+        </View>
 
         {/* Print Queue Section */}
         {renderPrintQueue()}
@@ -879,48 +1001,63 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   mainContent: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 20,
   },
 
   // Enhanced PPDS Header
   ppdsHeader: {
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 24,
-    marginBottom: 20,
+    backgroundColor: '#8A2BE2',
+    paddingVertical: 20,
+    paddingHorizontal: 16,
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 4},
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
   },
-  ppdsHeaderIcon: {
-    backgroundColor: '#f0f0ff',
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 16,
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  headerIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTextContainer: {
+    flex: 1,
   },
   ppdsTitle: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#1a1a1a',
-    marginBottom: 8,
-    textAlign: 'center',
+    color: 'white',
+    marginBottom: 4,
   },
   ppdsSubtitle: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 20,
-    lineHeight: 22,
+    fontSize: 14,
+    color: 'white',
+    opacity: 0.9,
+    lineHeight: 18,
   },
-  ppdsStats: {
+  // Stats Section
+  statsSection: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    width: '100%',
-    paddingHorizontal: 20,
   },
   statItem: {
     alignItems: 'center',
@@ -1169,6 +1306,61 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#666',
   },
+  queueAllergens: {
+    marginTop: 8,
+  },
+  queueAllergensLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  queueAllergensList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+  },
+  queueAllergenTag: {
+    backgroundColor: '#fff',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: '#000',
+  },
+  queueAllergenText: {
+    fontSize: 10,
+    color: '#000',
+    fontWeight: '500',
+  },
+
+  globalStorageContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  globalStorageLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 12,
+  },
+  globalStorageInput: {
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 14,
+    color: '#333',
+    backgroundColor: '#fff',
+  },
   queueItemControls: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1241,6 +1433,97 @@ const styles = StyleSheet.create({
   },
   previewContainer: {
     marginBottom: 16,
+  },
+  ppdsPreviewContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 2,
+    borderColor: '#000',
+    borderStyle: 'solid',
+    // Compact 56mm × 80mm dimensions - scaled for mobile
+    width: 280, // 56mm scaled down
+    height: 400, // 80mm scaled down (maintains 56:80 ratio)
+    alignSelf: 'center',
+    // Ensure content stays within boundaries
+    overflow: 'hidden',
+    // Use flexbox for proper positioning
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+  },
+
+  ppdsPreviewProductName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#000',
+    textAlign: 'center',
+    marginTop: 4,
+    marginBottom: 6,
+    textTransform: 'uppercase',
+    lineHeight: 20,
+  },
+  ppdsPreviewIngredients: {
+    marginBottom: 8,
+  },
+  ppdsPreviewIngredientsLine: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    flexWrap: 'wrap',
+  },
+  ppdsPreviewSectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#000',
+  },
+  ppdsPreviewIngredientsText: {
+    fontSize: 12,
+    color: '#000',
+    lineHeight: 16,
+    flex: 1,
+  },
+  ppdsPreviewAllergenBox: {
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: '#000',
+    borderRadius: 4,
+    padding: 8,
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  ppdsPreviewAllergenText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#000',
+    textAlign: 'center',
+  },
+  ppdsPreviewDates: {
+    marginBottom: 8,
+  },
+  ppdsPreviewDateText: {
+    fontSize: 11,
+    color: '#000',
+    marginBottom: 2,
+  },
+  ppdsPreviewStorageText: {
+    fontSize: 11,
+    color: '#000',
+    marginBottom: 12,
+    fontStyle: 'italic',
+  },
+  ppdsPreviewCompany: {
+    borderTopWidth: 1,
+    borderTopColor: '#000',
+    paddingTop: 8,
+  },
+  ppdsPreviewCompanyText: {
+    fontSize: 11,
+    color: '#000',
+    marginBottom: 2,
+  },
+  ppdsPreviewWebsiteText: {
+    fontSize: 11,
+    color: '#000',
+    fontStyle: 'italic',
   },
 
   // Enhanced Loading and Empty States

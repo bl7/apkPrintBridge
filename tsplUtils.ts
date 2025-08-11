@@ -445,6 +445,127 @@ export const generateComplexLabel = (
   return tspl;
 };
 
+/**
+ * Generate PPDS label with 56mm × 80mm dimensions
+ * Specific layout for PPDS page with allergen highlighting and storage instructions
+ */
+export const generatePPDSLabel = (
+  labelData: {
+    productName: string;
+    ingredients: string[];
+    allergens: string[];
+    expiryDate: string;
+    storageInstructions: string;
+    companyName?: string;
+  },
+  config: Partial<TSPLConfig> = {},
+): string => {
+  const {dpi = 203, gap = 2, direction = 0, density = 8} = config;
+
+  let tspl = '';
+
+  // Initialize label with exact 56x80mm dimensions
+  tspl += `SIZE 56mm,80mm\n`;
+  tspl += `GAP ${gap}mm,0mm\n`;
+  tspl += `DIRECTION ${direction}\n`;
+  tspl += `DENSITY ${density}\n`;
+  tspl += 'CLS\n';
+
+  // Using 203 DPI: 56mm = ~447 dots, 80mm = ~640 dots
+  // Compact layout matching the preview exactly
+
+  // 1. Product Name (centered, large, bold) - minimal top spacing
+  if (labelData.productName) {
+    const productName = labelData.productName.toUpperCase();
+    // Split into lines if it contains spaces
+    const nameParts = productName.split(' ');
+    if (nameParts.length > 1) {
+      // Multi-line product name - compact spacing
+      nameParts.forEach((part, index) => {
+        const y = 20 + index * 25; // 20, 45 - much closer spacing
+        const x = Math.max(10, (447 - part.length * 8) / 2); // Center each line
+        tspl += `TEXT ${x},${y},"3",0,1,1,"${part}"\n`;
+      });
+    } else {
+      // Single line product name - close to top
+      const x = Math.max(10, (447 - productName.length * 8) / 2);
+      tspl += `TEXT ${x},30,"3",0,1,1,"${productName}"\n`;
+    }
+  }
+
+  // 2. Ingredients section - directly below product name, on same line as "Ingredients:"
+  if (labelData.ingredients.length > 0) {
+    const ingredientsY = 60; // Much closer to product name
+
+    // Format ingredients with allergen highlighting
+    const formattedIngredients = labelData.ingredients.map(ingredient => {
+      const allergen = labelData.allergens.find(allergen =>
+        ingredient.toLowerCase().includes(allergen.toLowerCase()),
+      );
+      if (allergen) {
+        return `${ingredient}(${allergen.toUpperCase()})`;
+      }
+      return ingredient;
+    });
+
+    const ingredientsText = formattedIngredients.join(', ');
+
+    // Put "Ingredients:" and the list on the same line
+    tspl += `TEXT 10,${ingredientsY},"2",0,1,1,"Ingredients: ${ingredientsText}"\n`;
+  }
+
+  // 3. Allergen warning box - only if allergens exist, compact spacing
+  if (labelData.allergens.length > 0) {
+    const warningY = 85; // Much closer to ingredients
+
+    // Draw warning box with black border
+    tspl += `BOX 10,${warningY},437,${warningY + 30},0\n`; // Compact box height
+
+    // Allergen text centered in box
+    const allergenText = `Contains: ${labelData.allergens
+      .map(a => a.toUpperCase())
+      .join(', ')}`;
+    const textX = Math.max(10, (447 - allergenText.length * 6) / 2); // Center text
+    tspl += `TEXT ${textX},${warningY + 8},"2",0,1,1,"${allergenText}"\n`;
+  }
+
+  // 4. Date information - directly below ingredients/allergens
+  const datesY = labelData.allergens.length > 0 ? 130 : 110; // Compact spacing
+
+  // Packed date (today)
+  const today = new Date().toISOString().split('T')[0];
+  tspl += `TEXT 10,${datesY},"2",0,1,1,"Packed: ${today}"\n`;
+
+  // Use By date
+  if (labelData.expiryDate) {
+    tspl += `TEXT 10,${datesY + 20},"2",0,1,1,"Use By: ${
+      labelData.expiryDate
+    }"\n`;
+  }
+
+  // 5. Storage instructions - compact spacing
+  if (labelData.storageInstructions) {
+    const storageY = datesY + 45; // Compact spacing
+    tspl += `TEXT 10,${storageY},"2",0,1,1,"${labelData.storageInstructions}"\n`;
+  }
+
+  // 6. Bottom section - company info at bottom
+  const bottomY = datesY + 70; // Compact spacing
+
+  // Company name
+  if (labelData.companyName) {
+    tspl += `TEXT 10,${bottomY},"2",0,1,1,"Prepared by: ${labelData.companyName}"\n`;
+  }
+
+  // Website
+  tspl += `TEXT 10,${bottomY + 20},"2",0,1,1,"www.instalabel.co"\n`;
+
+  // Print label
+  tspl += 'PRINT 1\n';
+
+  return tspl;
+};
+
 export default {
   mmToDots,
   generateLabelSetup,
@@ -459,4 +580,5 @@ export default {
   generateInventoryLabel,
   generate56x31Label,
   generateComplexLabel,
+  generatePPDSLabel,
 };

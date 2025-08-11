@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Platform,
   Alert,
+  StatusBar,
 } from 'react-native';
 import {
   Printer,
@@ -79,18 +80,24 @@ const LoginPage: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        {/* Logo/Header */}
-        <View style={styles.header}>
-          <View style={styles.logoContainer}>
-            <Printer size={60} color="#8A2BE2" />
+      <StatusBar barStyle="light-content" backgroundColor="#8A2BE2" />
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerContent}>
+          <View style={styles.headerIconContainer}>
+            <Printer size={32} color="white" />
             <View style={styles.labelIcon}>
-              <FileText size={20} color="#8A2BE2" />
+              <FileText size={16} color="white" />
             </View>
           </View>
-          <Text style={styles.appTitle}>InstaLabel</Text>
-          <Text style={styles.appSubtitle}>Smart Kitchen Labeling</Text>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.headerTitle}>InstaLabel</Text>
+            <Text style={styles.headerSubtitle}>Smart Kitchen Labeling</Text>
+          </View>
         </View>
+      </View>
+
+      <View style={styles.content}>
 
         {/* Login Form */}
         <View style={styles.formContainer}>
@@ -174,7 +181,7 @@ const LoginPage: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#8A2BE2',
+    backgroundColor: '#f8f9fa',
   },
 
   content: {
@@ -183,12 +190,28 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   header: {
-    alignItems: 'center',
-    marginBottom: 40,
+    backgroundColor: '#8A2BE2',
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  logoContainer: {
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  headerIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
     position: 'relative',
-    marginBottom: 15,
   },
   labelIcon: {
     position: 'absolute',
@@ -198,16 +221,20 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 2,
   },
-  appTitle: {
-    fontSize: 36,
+  headerTextContainer: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 24,
     fontWeight: 'bold',
     color: 'white',
-    marginBottom: 5,
+    marginBottom: 4,
   },
-  appSubtitle: {
-    fontSize: 18,
-    color: 'rgba(255, 255, 255, 0.9)',
-    fontWeight: '500',
+  headerSubtitle: {
+    fontSize: 14,
+    color: 'white',
+    opacity: 0.9,
+    lineHeight: 18,
   },
   formContainer: {
     backgroundColor: '#F8F8F8',
